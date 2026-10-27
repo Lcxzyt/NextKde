@@ -63,8 +63,9 @@ export function packWidgets(definitions, columnCount, rowCount) {
 }
 
 export function fitWidgets(definitions, preferredColumns, maxColumns, rowCount) {
-    const rows = Math.max(1, rowCount);
-    const maximum = Math.max(1, maxColumns);
+    if (rowCount <= 0 || maxColumns <= 0) return { columns: 0, placements: [] };
+    const rows = rowCount;
+    const maximum = maxColumns;
     const extent = definitions.reduce((right, widget) =>
         Number.isInteger(widget.column) ? Math.max(right, widget.column + widget.columns) : right, 0);
     const first = Math.min(maximum, Math.max(1, preferredColumns, extent));
@@ -106,4 +107,26 @@ export function canPlace(placements, widgetId, column, row, columns, rows, maxCo
     return !placements.some(other => other.id !== widgetId
         && column < other.column + other.columns && column + columns > other.column
         && row < other.row + other.rows && row + rows > other.row);
+}
+
+// Keep enough file columns for the current desktop, up to the capacity of the
+// original four-column widget layout. Even an empty desktop keeps a drop lane.
+export function widgetColumnLimit(width, cellSize, gap, fileColumnWidth, fileCount, fileRows) {
+    const step = Math.max(1, cellSize + gap);
+    const fileStep = Math.max(1, fileColumnWidth);
+    const baselineFiles = Math.max(1, Math.floor((width - 4 * step) / fileStep));
+    const needed = Math.max(1, Math.ceil(fileCount / Math.max(1, fileRows)));
+    const reserved = Math.min(baselineFiles, needed) * fileStep;
+    return Math.max(0, Math.floor((width - reserved) / step));
+}
+
+export function savedPositionsAfterMove(saved, placements, widgetId, column, row) {
+    const next = Object.assign({}, saved);
+    for (const placement of placements) {
+        // Preserve the original location of projected/out-of-bounds cards.
+        if (!Object.prototype.hasOwnProperty.call(next, placement.id))
+            next[placement.id] = { column: placement.column, row: placement.row };
+    }
+    next[widgetId] = { column, row };
+    return next;
 }

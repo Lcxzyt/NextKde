@@ -10,6 +10,7 @@ QtObject {
     id: service
 
     property int revision: 0
+    property var projectedPositions: ({})
     readonly property var defaultSizes: ({
         clock: "small",
         weather: "medium",
@@ -89,7 +90,12 @@ QtObject {
         } catch (_) { return {} }
     }
 
-    function savePosition(output, placements, widgetId, column, row) {
+    function displayPositionsForOutput(output, geometry) {
+        const projection = projectedPositions[String(output)]
+        return projection?.geometry === geometry ? projection.positions : positionsForOutput(output)
+    }
+
+    function savePosition(output, placements, widgetId, column, row, geometry) {
         if (defaultOrder.indexOf(widgetId) < 0 || !Number.isInteger(column)
                 || !Number.isInteger(row) || column < 0 || row < 0) return false
         let all = ({})
@@ -97,13 +103,17 @@ QtObject {
             const stored = JSON.parse(_settings.positionsJson)
             if (stored && typeof stored === "object" && !Array.isArray(stored)) all = stored
         } catch (_) {}
-        const next = Object.assign({}, positionsForOutput(output))
-        // Freeze the other cards where the user sees them. Dropping one card
-        // into an empty cell must not repack the rest of the desktop.
+        all[String(output)] = WidgetLayout.savedPositionsAfterMove(
+            positionsForOutput(output), placements, widgetId, column, row)
+        // Freeze only this geometry's projection. Do not persist the temporary
+        // fallback positions of other cards after a screen/layout change.
+        const displayed = Object.assign({}, all[String(output)])
         for (const placement of placements)
-            next[placement.id] = { column: placement.column, row: placement.row }
-        next[widgetId] = { column, row }
-        all[String(output)] = next
+            displayed[placement.id] = { column: placement.column, row: placement.row }
+        displayed[widgetId] = { column, row }
+        const projections = Object.assign({}, projectedPositions)
+        projections[String(output)] = { geometry, positions: displayed }
+        projectedPositions = projections
         _settings.positionsJson = JSON.stringify(all)
         _settings.sync()
         revision++

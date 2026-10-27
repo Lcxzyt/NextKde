@@ -19,6 +19,7 @@ import qs.desktop.modules.stage
 import qs.desktop.modules.weather
 import "../../../Kos/Ui"
 import "WidgetLayout.mjs" as WidgetLayout
+import "DesktopGridMetrics.mjs" as DesktopGridMetrics
 
 // iPadOS-inspired desktop widgets. Stays on the Bottom layer: Plasma's desktop
 // surface shares the Desktop/Background layer and would cover it if moved down.
@@ -300,7 +301,7 @@ PanelWindow {
     // Saved grid positions are per output; unpositioned cards fill free cells.
     function configuredWidget(id, priority, startColor, endColor) {
         const span = DeskCenterConfigService.spanFor(id)
-        const position = DeskCenterConfigService.positionsForOutput(desktopOutput)[id]
+        const position = DeskCenterConfigService.displayPositionsForOutput(desktopOutput, widgetGeometry)[id]
         return { id: id, title: "", columns: span[0], rows: span[1],
             column: position?.column, row: position?.row,
             priority: priority, startColor: startColor, endColor: endColor,
@@ -338,11 +339,33 @@ PanelWindow {
         return WidgetLayout.packWidgets(definitions, columnCount, rowCount)
     }
 
-    readonly property int maximumWidgetColumns: Math.max(1, Math.floor(
-        (width - leftInset - rightInset + gap) / (cellSize + gap)))
+    FontMetrics { id: desktopFileFontMetrics }
+    readonly property var reservedFileMetrics: DesktopGridMetrics.metrics(
+        desktopFiles.layout.iconSize + 72, desktopFiles.layout.iconSize + 58,
+        desktopFiles.layout.iconSize + 12, desktopFiles.layout.iconSpacing, desktopFileFontMetrics.height)
+    readonly property int maximumWidgetColumns: WidgetLayout.widgetColumnLimit(
+        width - leftInset - rightInset, cellSize, gap,
+        reservedFileMetrics.cellWidth + reservedFileMetrics.gap,
+        desktopFiles.entriesForOutput(desktopOutput).length,
+        Math.floor((height - topInset - bottomInset + reservedFileMetrics.gap)
+            / (reservedFileMetrics.cellHeight + reservedFileMetrics.gap)))
+    readonly property string widgetGeometry: maximumWidgetColumns + ":" + usableRows
+
     readonly property var widgetLayout: WidgetLayout.fitWidgets(
         widgetDefinitions, 4, maximumWidgetColumns, usableRows)
     readonly property var placements: widgetLayout.placements
+    function resizeWidget(widgetId, columns, rows) {
+        const placement = placementFor(widgetId)
+        if (![1, 2].includes(columns) || ![1, 2].includes(rows)
+                || !placement || !WidgetLayout.canPlace(placements, widgetId,
+                placement.column, placement.row, columns, rows,
+                maximumWidgetColumns, usableRows)) return false
+        DeskCenterConfigService.savePosition(desktopOutput, placements,
+            widgetId, placement.column, placement.row, widgetGeometry)
+        DeskCenterConfigService.setSpan(widgetId, columns, rows)
+        return true
+    }
+
     function placementFor(widgetId) {
         for (let i = 0; i < placements.length; i++)
             if (placements[i].id === widgetId)
@@ -665,7 +688,7 @@ PanelWindow {
                     card.dragOffsetY = 0
                     if (allowed)
                         DeskCenterConfigService.savePosition(root.desktopOutput, placements,
-                            id, destination.column, destination.row)
+                            id, destination.column, destination.row, root.widgetGeometry)
                 }
             }
 
@@ -716,8 +739,11 @@ PanelWindow {
                 anchors { right: parent.right; bottom: parent.bottom; margins: 5 }
                 cellSize: root.cellSize
                 gap: root.gap
+                previewAllowed: card.placement !== null && WidgetLayout.canPlace(
+                    root.placements, card.modelData.id, card.placement.column, card.placement.row,
+                    previewColumns, previewRows, root.maximumWidgetColumns, root.usableRows)
                 onCommitted: function(columns, rows) {
-                    DeskCenterConfigService.setSpan(card.modelData.id, columns, rows)
+                    root.resizeWidget(card.modelData.id, columns, rows)
                 }
             }
 
@@ -728,7 +754,7 @@ PanelWindow {
                 width: resizePreview.implicitWidth + 24
                 height: 32
                 radius: 12
-                color: "#b0000000"
+                color: resizeHandle.previewAllowed ? "#b0000000" : "#c0a02020"
                 Text {
                     id: resizePreview
                     anchors.centerIn: parent
@@ -4097,7 +4123,7 @@ PanelWindow {
             validY: desktopFileGrid.y
             validWidth: desktopFileGrid.width
             validHeight: desktopFileGrid.height
-            baseCellWidth: desktopFileGrid.itemWidth
+            baseCellWidth: desktopFileGrid.preferredItemWidth
             baseCellHeight: desktopFileGrid.itemHeight
             density: desktopFileGrid.desktopLayout.iconSpacing
             iconVisualSize: desktopFileGrid.iconSize + 12

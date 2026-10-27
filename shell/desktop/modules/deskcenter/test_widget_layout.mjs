@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { canPlace, fitWidgets, packWidgets, sizeOrder, snappedPosition, snappedSpan, spanFor } from "./WidgetLayout.mjs";
+import { canPlace, fitWidgets, savedPositionsAfterMove, widgetColumnLimit, packWidgets, sizeOrder, snappedPosition, snappedSpan, spanFor } from "./WidgetLayout.mjs";
 
 const ids = ["clock", "weather", "calendar", "todo", "system", "activity", "music"];
 
@@ -111,3 +111,18 @@ assert.equal(fitWidgets(conflicting, 4, 9, 4).placements.length, 3,
     "resize conflicts repack without losing widgets");
 
 console.log("DeskCenter widget layout: all size and packing tests passed");
+
+const projected = [{id: "clock", column: 0, row: 0}, {id: "music", column: 2, row: 0}];
+const original = {music: {column: 2, row: 6}};
+const moved = savedPositionsAfterMove(original, projected, "clock", 4, 0);
+assert.deepEqual(moved.music, {column: 2, row: 6}, "moving clock must preserve music's offscreen saved row");
+assert.deepEqual(moved.clock, {column: 4, row: 0});
+assert.deepEqual(original.music, {column: 2, row: 6});
+for (const files of [0, 1, 8, 16]) {
+    const limit = widgetColumnLimit(1880, 180, 20, 144, files, 6);
+    const fileWidth = 1880 - limit * 200;
+    assert.ok(fileWidth >= Math.max(1, Math.ceil(files / 6)) * 144,
+        "rightmost widget leaves room for desktop files");
+}
+assert.deepEqual(fitWidgets(saved, 4, 0, 4), {columns: 0, placements: []});
+assert.deepEqual(fitWidgets(saved, 4, 8, 0), {columns: 0, placements: []});

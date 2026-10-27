@@ -40,19 +40,40 @@ ShellRoot {
                 const repeat = find(desktop.contentItem, "desktop-widget-repeater")
                 if (stage === 0) {
                     ScreenLifecycle.activeScreen = desktop.screen
+                    DesktopFilesService.desktopSubscriptionEnabled = false
+                    DesktopFilesService.entries = [0, 1, 2].map(i => ({
+                        path: "/tmp/widget-fixture-" + i, name: "fixture-" + i,
+                        icon: "text-plain", isDir: false, output: desktop.desktopOutput
+                    }))
                     if (Quickshell.env("VERIFY_WIDGET_RESTART") === "1") {
                         const span = DeskCenterConfigService.spanFor("clock")
                         check(span[0] === 1 && span[1] === 2, "portrait span survives restart")
                         const position = DeskCenterConfigService.positionsForOutput(desktop.desktopOutput).clock
                         check(position.column === desktop.maximumWidgetColumns - 2 && position.row === 1,
                             "manual grid position survives restart")
+                        check(DeskCenterConfigService.positionsForOutput("projection-test").music.row === 6,
+                            "another card's original position survives restart")
                         console.log("WIDGET_RESIZE_RESTART_PASS")
                         Qt.quit()
                         return
                     }
+                    DeskCenterConfigService.savePosition("projection-test", [], "music", 2, 6, "8:8")
+                    DeskCenterConfigService.savePosition("projection-test",
+                        [{id: "music", column: 2, row: 0}], "clock", 4, 0, "8:4")
+                    check(DeskCenterConfigService.positionsForOutput("projection-test").music.row === 6,
+                        "moving another card preserves the saved row")
+                    check(DeskCenterConfigService.displayPositionsForOutput("projection-test", "8:4").music.row === 0,
+                        "current screen keeps its temporary placement")
+                    check(DeskCenterConfigService.displayPositionsForOutput("projection-test", "8:8").music.row === 6,
+                        "restored screen recovers original placement")
                     for (const id of DeskCenterConfigService.defaultOrder)
                         AppearanceConfigService.setDeskCenterWidgetVisible(id, true)
-                    DeskCenterConfigService.setSpan("music", 2, 2)
+                    // Start with room around the clock so accepted corner resizes
+                    // need not move any neighbouring widget.
+                    for (const id of DeskCenterConfigService.defaultOrder)
+                        DeskCenterConfigService.setSpan(id, 1, 1)
+                    DeskCenterConfigService.savePosition(desktop.desktopOutput, [], "clock",
+                        desktop.maximumWidgetColumns - 2, desktop.usableRows - 2, desktop.widgetGeometry)
                     desktop.enterWidgetEditMode(false)
                     stage = 1
                     return
@@ -71,6 +92,9 @@ ShellRoot {
                             || Math.abs(card.x - desktop.leftInset - card.placement.column * (desktop.cellSize + desktop.gap)) > 1
                             || Math.abs(card.y - desktop.topInset - card.placement.row * (desktop.cellSize + desktop.gap)) > 1)) return
                 }
+                const files = find(desktop.contentItem, "desktop-file-grid")
+                check(files.width >= DesktopFilesService.layout.iconSize + 88,
+                    "rightmost widget preserves a usable file lane")
                 if (stage === 4) {
                     // Load and render every widget at every supported size,
                     // including the narrow music/calendar/weather content.
@@ -148,6 +172,20 @@ ShellRoot {
                     }
                     check(!find(desktop.contentItem, "widget-drop-preview").visible, "drop clears preview")
                     console.log("WIDGET_RESIZE_MOVE", draggedId, target.column, target.row, target.allowed)
+                    if (moveIndex === 0) {
+                        const savedSpan = DeskCenterConfigService.spanFor("clock")
+                        const handle = find(card, "widget-resize-handle")
+                        const pointer = find(card, "widget-resize-pointer")
+                        const start = pointer.mapToItem(desktop.contentItem, pointer.width / 2, pointer.height / 2)
+                        events.mousePress(pointer, pointer.width / 2, pointer.height / 2, Qt.LeftButton, Qt.NoModifier, 5)
+                        events.mouseMove(desktop.contentItem, start.x + desktop.cellSize + desktop.gap,
+                            start.y, 20, Qt.LeftButton, Qt.NoModifier)
+                        check(!handle.previewAllowed, "right-edge resize is rejected")
+                        events.mouseRelease(desktop.contentItem, start.x + desktop.cellSize + desktop.gap,
+                            start.y, Qt.LeftButton, Qt.NoModifier, 5)
+                        check(DeskCenterConfigService.spanFor("clock").join() === savedSpan.join(),
+                            "rejected resize does not save")
+                    }
                     moveIndex++
                     if (moveIndex === 3) {
                         // These cards have a full-card launch MouseArea. The
@@ -197,6 +235,11 @@ ShellRoot {
                 console.log("WIDGET_RESIZE_SPAN", target[0], target[1])
                 resizeIndex++
                 if (resizeIndex < spans.length) { stage = 1; return }
+                DeskCenterConfigService._settings.positionsJson = JSON.stringify({
+                    "projection-test": DeskCenterConfigService.positionsForOutput("projection-test")
+                })
+                DeskCenterConfigService.projectedPositions = ({})
+                DeskCenterConfigService.revision++
                 stage = 4
             } catch (error) {
                 console.error("WIDGET_RESIZE_FAIL: " + error)

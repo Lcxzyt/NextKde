@@ -32,7 +32,12 @@ preferences by `DeskCenterConfigService`; existing small/medium/large values rem
 Packing reserves saved positions first, expands into available desktop columns, and
 projects conflicting or out-of-bounds positions onto the current output without
 rewriting the original coordinates. On short outputs it temporarily compacts cards.
-The desktop file area starts after the occupied widget columns.
+The desktop file area starts after the occupied widget columns. Widget expansion
+reserves at least one file/drop column, and more for current files up to the original
+four-widget-column layout capacity. Resize previews reject occupied/out-of-bounds
+rectangles instead of repacking neighbours. Moving a card only persists that card
+and previously unpositioned neighbours; other projected positions remain in memory
+for the current grid geometry and their original saved positions are retained.
 
 `WidgetLayout.mjs` owns packing, snapping and collision checks. `WidgetResizeHandle.qml`
 previews spans and commits only on release; resizing and moving are mutually exclusive.

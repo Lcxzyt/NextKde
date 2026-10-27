@@ -14,6 +14,7 @@ Item {
     property real cardHeight: parent.height
     property color ink: "white"
     property bool resizing: false
+    property bool previewAllowed: true
     property int previewColumns: 1
     property int previewRows: 1
     property point startPoint: Qt.point(0, 0)
@@ -67,7 +68,8 @@ Item {
             handle.previewRows = span[1]
         }
         onReleased: {
-            handle.committed(handle.previewColumns, handle.previewRows)
+            if (handle.previewAllowed)
+                handle.committed(handle.previewColumns, handle.previewRows)
             handle.resizing = false
         }
         onCanceled: handle.resizing = false
