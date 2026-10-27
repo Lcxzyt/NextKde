@@ -30,6 +30,7 @@ QtObject {
         property int schemaVersion: 2
         property string sizesJson: "{}"
         property string orderJson: "[]"
+        property string positionsJson: "{}"
         property bool desktopLyricsEnabled: true
         property real desktopLyricsX: 0.5
         property real desktopLyricsY: 1.0
@@ -80,6 +81,35 @@ QtObject {
         return true
     }
 
+    function positionsForOutput(output) {
+        try {
+            const positions = JSON.parse(_settings.positionsJson)[String(output)]
+            return positions && typeof positions === "object" && !Array.isArray(positions)
+                ? positions : {}
+        } catch (_) { return {} }
+    }
+
+    function savePosition(output, placements, widgetId, column, row) {
+        if (defaultOrder.indexOf(widgetId) < 0 || !Number.isInteger(column)
+                || !Number.isInteger(row) || column < 0 || row < 0) return false
+        let all = ({})
+        try {
+            const stored = JSON.parse(_settings.positionsJson)
+            if (stored && typeof stored === "object" && !Array.isArray(stored)) all = stored
+        } catch (_) {}
+        const next = Object.assign({}, positionsForOutput(output))
+        // Freeze the other cards where the user sees them. Dropping one card
+        // into an empty cell must not repack the rest of the desktop.
+        for (const placement of placements)
+            next[placement.id] = { column: placement.column, row: placement.row }
+        next[widgetId] = { column, row }
+        all[String(output)] = next
+        _settings.positionsJson = JSON.stringify(all)
+        _settings.sync()
+        revision++
+        return true
+    }
+
     function sizeFor(widgetId) {
         const sizes = parsedSizes()
         const value = String(sizes[widgetId] ?? defaultSizes[widgetId] ?? "medium")
@@ -99,8 +129,13 @@ QtObject {
         return true
     }
 
+    function setSpan(widgetId, columns, rows) {
+        return setSize(widgetId, String(columns) + "x" + String(rows))
+    }
+
     function cycleSize(widgetId) {
-        const current = sizeFor(widgetId)
+        const span = spanFor(widgetId)
+        const current = String(Math.min(2, span[0])) + "x" + String(span[1])
         const next = sizeOrder[(sizeOrder.indexOf(current) + 1) % sizeOrder.length]
         setSize(widgetId, next)
         return next
