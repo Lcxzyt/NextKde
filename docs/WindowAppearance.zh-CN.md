@@ -40,6 +40,18 @@ Overview 和“展示窗口”的缩略图直接绘制场景项，绕过 Bridge 
 裁剪不实现内容保护留白；Settings 提供部分外观控制，详细规则以解析器/示例为准。
 调色板外观和应用覆盖不采壁纸，也不能恢复客户端已裁掉的内容。
 
+## 最小化与恢复时长
+
+设置的“窗口动画”下分别提供最小化和恢复时长滑块。`WindowSettings` 读写 `kwinrc` 中既有的
+`[Effect-kos_dock_window_animation]` 组内 `GenieDuration` 和 `RestoreDuration`，保存后请求特效重读配置。
+默认值与特效一致：最小化 300 ms、恢复 200 ms；有效范围分别为 160–1200 ms、80–1200 ms，
+滑块以 20 ms 步进。拖动只预览，松手保存，取消保留已保存值。
+隐藏动画选择“无”时禁用滑块，但保留两项时长。时长独立于 KOS 窗口外观总开关，不改变打开或关闭时长。
+
+`kos-settings.window-config` 覆盖参数校验、持久化和配置越界读取；
+`kos-settings.window-interactions` 覆盖控件、预览/取消及布局。在 VM 或托管 CI 中运行这些检查，
+并在 VM 会话中验证特效实际重读配置。
+
 ## Surface-shape 协议
 
 `kos-surface-shape-v1.xml` 定义版本协商，保留接口/操作码顺序。

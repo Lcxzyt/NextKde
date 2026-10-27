@@ -189,6 +189,65 @@ ColumnLayout {
                     }
                 }
             }
+            Repeater {
+                model: [
+                    { kind: "minimize", label: I18n.tr("Minimize duration"), minimum: 160, fallback: 300, symbol: "↓" },
+                    { kind: "restore", label: I18n.tr("Restore duration"), minimum: 80, fallback: 200, symbol: "↺" }
+                ]
+                delegate: Column {
+                    id: durationRow
+                    required property var modelData
+                    width: animationRows.width
+                    property int previewDuration: -1
+                    readonly property int savedDuration: Number(windowPage.snapshot[modelData.kind + "Duration"] ?? modelData.fallback)
+                    readonly property int displayedDuration: previewDuration >= 0 ? previewDuration : savedDuration
+                    enabled: windowPage.backend !== null && windowPage.snapshot.hideAnimation !== "none"
+                    opacity: enabled ? 1 : 0.4
+
+                    function durationAt(position) {
+                        return Math.round((modelData.minimum + position * (1200 - modelData.minimum)) / 20) * 20
+                    }
+
+                    Rectangle { width: parent.width - 53; x: 53; height: 1; color: colors.separator }
+                    Item {
+                        width: parent.width; height: 54
+                        RowLayout {
+                            anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 16; spacing: 12
+                            Controls.SettingIcon {
+                                colors: windowPage.colors
+                                materialForm: windowPage.materialForm
+                                symbol: durationRow.modelData.symbol
+                                tint: "#ff9500"
+                            }
+                            Text { text: durationRow.modelData.label; color: colors.primaryText; font.pixelSize: 14 }
+                            Item { Layout.fillWidth: true }
+                            Text {
+                                objectName: durationRow.modelData.kind + "DurationValue"
+                                text: durationRow.displayedDuration + " ms"
+                                color: colors.secondaryText; font.pixelSize: 12
+                                Layout.preferredWidth: 64
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            LiquidControls.LiquidSlider {
+                                objectName: "window" + (durationRow.modelData.kind === "minimize" ? "Minimize" : "Restore") + "DurationSlider"
+                                Accessible.name: durationRow.modelData.label
+                                enabled: durationRow.enabled
+                                Layout.preferredWidth: 190
+                                materialForm: windowPage.materialForm
+                                accentColor: colors.accent; trackColor: colors.divider
+                                wheelStep: 20 / (1200 - durationRow.modelData.minimum)
+                                value: (durationRow.displayedDuration - durationRow.modelData.minimum) / (1200 - durationRow.modelData.minimum)
+                                onPreviewChanged: function(position) { durationRow.previewDuration = durationRow.durationAt(position) }
+                                onCanceled: durationRow.previewDuration = -1
+                                onCommitRequested: function(position) {
+                                    windowPage.backend.setAnimationDuration(durationRow.modelData.kind, durationRow.durationAt(position))
+                                    durationRow.previewDuration = -1
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             Rectangle { width: parent.width - 53; x: 53; height: 1; color: colors.separator }
             Item {
                 width: parent.width; height: 54

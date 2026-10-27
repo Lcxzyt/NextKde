@@ -10,6 +10,7 @@
 #include <QLockFile>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <algorithm>
 
 namespace {
 QString path(const QString &name) {
@@ -65,6 +66,8 @@ QVariantMap WindowSettings::state() const {
             {"radius", defaults.value("corners").toObject().value("radius").toInt(20)},
             {"shadow", defaults.value("shadow").toObject().value("enabled").toBool(true)},
             {"hideAnimation", hide},
+            {"minimizeDuration", std::clamp(animation.readEntry("GenieDuration", 300), 160, 1200)},
+            {"restoreDuration", std::clamp(animation.readEntry("RestoreDuration", 200), 80, 1200)},
             {"closeAnimation", animation.readEntry("CloseAnimation", QStringLiteral("scale"))},
             {"decoration", decoration.readEntry("library", QStringLiteral("org.kde.breeze"))},
             {"buttonGlyphMode", buttonGlyphMode}};
@@ -174,6 +177,21 @@ bool WindowSettings::setButtonGlyphMode(const QString &mode) {
     doc.insert(QStringLiteral("default"), defaultObj);
     const bool saved = write(filename, doc, m_error);
     if (saved) reconfigure(QStringLiteral("kos_bridge"));
+    emit changed();
+    return saved;
+}
+bool WindowSettings::setAnimationDuration(const QString &kind, int duration) {
+    const bool minimize = kind == "minimize";
+    if ((!minimize && kind != "restore")
+        || duration < (minimize ? 160 : 80) || duration > 1200) return false;
+    m_error.clear();
+    auto config = KSharedConfig::openConfig(QStringLiteral("kwinrc"));
+    config->reparseConfiguration();
+    KConfigGroup animation(config, QStringLiteral("Effect-kos_dock_window_animation"));
+    animation.writeEntry(minimize ? "GenieDuration" : "RestoreDuration", duration);
+    const bool saved = config->sync();
+    if (!saved) m_error = QStringLiteral("Could not save the animation configuration");
+    else reconfigure(QStringLiteral("kos_dock_window_animation"));
     emit changed();
     return saved;
 }

@@ -52,6 +52,21 @@ Clipping does not implement content-protection padding. Settings exposes selecte
 controls; the parser/example remains the reference for detailed rules. Palette-derived appearance and explicit per-app overrides do not
 sample wallpaper or recover content already removed by the client.
 
+## Minimize and restore timing
+
+Settings exposes separate minimize and restore duration sliders under Window animations.
+`WindowSettings` reads and writes `GenieDuration` and `RestoreDuration` in the existing
+`[Effect-kos_dock_window_animation]` group of `kwinrc`, then requests an effect reconfigure.
+The defaults match the effect: 300 ms for minimizing and 200 ms for restoring. The accepted
+ranges are 160–1200 ms and 80–1200 ms respectively; the sliders use 20 ms steps.
+Dragging previews the duration locally; releasing commits it, and canceling retains the saved value.
+Choosing no hide animation disables the controls without discarding either duration. Timing is
+independent of the KOS window appearance toggle and does not change open or close timing.
+
+`kos-settings.window-config` covers validation, persistence and out-of-range configuration reads.
+`kos-settings.window-interactions` covers the controls, preview/cancel behavior and layout.
+Run these checks in a VM or hosted CI; verify live effect reconfiguration in a VM session.
+
 ## Surface-shape protocol
 
 `kos-surface-shape-v1.xml` defines versioned capability negotiation. Preserve interface/opcode order.

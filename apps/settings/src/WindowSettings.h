@@ -18,6 +18,7 @@ public:
     Q_INVOKABLE bool setTakeover(bool enabled);
     Q_INVOKABLE bool setAnimation(const QString &kind, const QString &style);
     Q_INVOKABLE bool setButtonGlyphMode(const QString &mode);
+    Q_INVOKABLE bool setAnimationDuration(const QString &kind, int duration);
     bool installDefaults();
 signals:
     void changed();

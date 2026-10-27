@@ -1158,6 +1158,8 @@ export const catalog = {
     "macOS (on hover)": "macOS 模式（悬停显示）",
     "Turning off KOS window appearance restores the original decorator. Radius and shadow apply immediately; decorator switches take effect on next login.": "关闭 KOS 窗口外观会恢复原装饰器。圆角与阴影即时生效，装饰器切换在下次登录生效。",
     "Hide and restore": "隐藏与恢复",
+    "Minimize duration": "最小化时长",
+    "Restore duration": "恢复时长",
     "Fade out": "淡出",
     "Shrink and fade": "缩小淡出",
     "Hide means minimizing to the Dock. Choosing “None” makes KOS drop the animation and leave it to other enabled KWin effects.": "隐藏指最小化到 Dock。选择“无”会让 KOS 放弃该动画，由其他已启用的 KWin 效果处理。",
