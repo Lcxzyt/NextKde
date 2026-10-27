@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Wayland
 import qs.desktop.modules.common
 import qs.desktop.modules.deskcenter
+import "desktop/modules/deskcenter/WidgetLayout.mjs" as WidgetLayout
 
 ShellRoot {
     id: test
@@ -49,7 +50,7 @@ ShellRoot {
                         const span = DeskCenterConfigService.spanFor("clock")
                         check(span[0] === 1 && span[1] === 2, "portrait span survives restart")
                         const position = DeskCenterConfigService.positionsForOutput(desktop.desktopOutput).clock
-                        check(position.column === desktop.maximumWidgetColumns - 2 && position.row === 1,
+                        check(position.column === desktop.maximumWidgetColumns - 1 && position.row === 2,
                             "manual grid position survives restart")
                         check(DeskCenterConfigService.positionsForOutput("projection-test").music.row === 6,
                             "another card's original position survives restart")
@@ -134,7 +135,7 @@ ShellRoot {
                     const occupied = desktop.placementFor("weather")
                     moveTargets = [
                         { column: desktop.maximumWidgetColumns - 1, row: 0, allowed: true },
-                        { column: desktop.maximumWidgetColumns - 2, row: 1, allowed: true },
+                        { column: desktop.maximumWidgetColumns - 1, row: 2, allowed: true },
                         { column: occupied.column, row: occupied.row, allowed: false }
                     ]
                     stage = 6
@@ -146,6 +147,18 @@ ShellRoot {
                     const card = find(desktop.contentItem, "desktop-widget-" + draggedId)
                     if (stage === 6) {
                         beforeMove = desktop.placements.slice()
+                        if (target.relocate) {
+                            let destination = null
+                            for (let row = 0; row < desktop.usableRows && !destination; ++row)
+                                for (let column = 0; column < desktop.maximumWidgetColumns && !destination; ++column)
+                                    if ((column !== card.placement.column || row !== card.placement.row)
+                                            && WidgetLayout.canPlace(desktop.placements, draggedId, column, row,
+                                                card.displayColumns, card.displayRows, desktop.maximumWidgetColumns, desktop.usableRows))
+                                        destination = {column, row}
+                            check(destination !== null, "fixture has a free relocation rectangle")
+                            target.column = destination.column
+                            target.row = destination.row
+                        }
                         const start = card.mapToItem(desktop.contentItem, card.width / 2, card.height / 2)
                         const step = desktop.cellSize + desktop.gap
                         releasePoint = Qt.point(start.x + (target.column - card.placement.column) * step,
@@ -193,7 +206,7 @@ ShellRoot {
                         const extra = []
                         for (const id of ["weather", "todo", "music"]) {
                             const original = desktop.placementFor(id)
-                            extra.push({ id, column: 5, row: 0, allowed: true })
+                            extra.push({ id, relocate: true, allowed: true })
                             extra.push({ id, column: original.column, row: original.row, allowed: true })
                         }
                         moveTargets = moveTargets.concat(extra)
