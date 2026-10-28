@@ -710,9 +710,7 @@ if(BUILD_TESTING)
     add_executable(kos-glass-contrast-map-test tests/glass-contrast/map_test.cpp
         kwin/glass-effect/src/backdropcontrast.cpp)
     target_compile_definitions(kos-glass-contrast-map-test PRIVATE GLASS_X11)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(KOS_MAP_TEST_EPOXY REQUIRED IMPORTED_TARGET epoxy)
-    target_link_libraries(kos-glass-contrast-map-test PRIVATE Qt6::Core PkgConfig::KOS_MAP_TEST_EPOXY)
+    target_link_libraries(kos-glass-contrast-map-test PRIVATE Qt6::Core)
     add_test(NAME kos-glass.contrast-map COMMAND kos-glass-contrast-map-test)
     set_tests_properties(kos-glass.contrast-map PROPERTIES LABELS logic TIMEOUT 10)
     qt_add_executable(kos-legacy-glass-blur-test

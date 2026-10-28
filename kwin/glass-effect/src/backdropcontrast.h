@@ -1,9 +1,12 @@
 #pragma once
 
+#ifndef GLASS_X11
 #include "../../kos-bridge/windowbuttons/titlebarreadback.h"
+#endif
 #include "contrastfilter.h"
 #include <QByteArray>
 #include <QElapsedTimer>
+#include <QRect>
 #include <QSize>
 #include <QVector>
 #include <memory>
@@ -44,6 +47,8 @@ public:
     QVector<Result> poll();
     bool pending() const;
 private:
+#ifndef GLASS_X11
+    // Pure map tests and the X11 build do not need GL readback declarations.
     struct Sample {
         KOS::TitlebarReadback readback;
         GlassContrastFilter filter;
@@ -64,6 +69,7 @@ private:
     QElapsedTimer m_clock;
     std::unordered_map<quint32, Target> m_targets;
     std::unordered_map<quint64, std::unique_ptr<Sample>> m_samples;
+#endif
 };
 
 // Pure helpers, shared with the logic test. `pixels` is RGBA8 of a

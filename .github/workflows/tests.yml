@@ -180,6 +180,7 @@ jobs:
           path: |
             .build/tests/test-results/
             .build/tests/apps/settings/extensions-*.png
+            tmp/glass-contrast/
             .build/tests/Testing/Temporary/
             .build/tests/CMakeFiles/CMakeConfigureLog.yaml
 
