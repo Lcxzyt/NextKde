@@ -465,6 +465,10 @@ if(BUILD_TESTING)
         # nothing ran them. They cover the Dock's adaptive layout and auto-hide
         # math, the appearance configuration migration, and the platform
         # window-placement rules -- all pure logic, no display or shell needed.
+        add_test(NAME kos-glass.contrast-policy
+            COMMAND ${KOS_NODE_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/tests/glass-contrast/test_policy.mjs)
+        set_tests_properties(kos-glass.contrast-policy PROPERTIES LABELS logic TIMEOUT 10)
         add_test(NAME kos-shell.appearance-config
             COMMAND ${KOS_NODE_EXECUTABLE}
                 ${CMAKE_CURRENT_SOURCE_DIR}/shell/desktop/modules/common/test_appearance_config.mjs
@@ -694,6 +698,23 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS
 find_package(KF6WindowSystem 6.0 QUIET)
 if(BUILD_TESTING)
     find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
+    add_executable(kos-glass-contrast-filter-test tests/glass-contrast/filter_test.cpp)
+    target_link_libraries(kos-glass-contrast-filter-test PRIVATE Qt6::Core)
+    add_test(NAME kos-glass.contrast-filter COMMAND kos-glass-contrast-filter-test)
+    set_tests_properties(kos-glass.contrast-filter PROPERTIES LABELS logic TIMEOUT 10)
+    add_executable(kos-glass-ink-policy-test tests/glass-contrast/ink_policy_test.cpp)
+    target_link_libraries(kos-glass-ink-policy-test PRIVATE Qt6::Test)
+    add_test(NAME kos-glass.ink-policy COMMAND kos-glass-ink-policy-test)
+    set_tests_properties(kos-glass.ink-policy PROPERTIES LABELS logic TIMEOUT 10)
+    # The map helpers are pure; the GL half of the file compiles out.
+    add_executable(kos-glass-contrast-map-test tests/glass-contrast/map_test.cpp
+        kwin/glass-effect/src/backdropcontrast.cpp)
+    target_compile_definitions(kos-glass-contrast-map-test PRIVATE GLASS_X11)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(KOS_MAP_TEST_EPOXY REQUIRED IMPORTED_TARGET epoxy)
+    target_link_libraries(kos-glass-contrast-map-test PRIVATE Qt6::Core PkgConfig::KOS_MAP_TEST_EPOXY)
+    add_test(NAME kos-glass.contrast-map COMMAND kos-glass-contrast-map-test)
+    set_tests_properties(kos-glass.contrast-map PROPERTIES LABELS logic TIMEOUT 10)
     qt_add_executable(kos-legacy-glass-blur-test
         kwin/glass-effect/tests/test_legacy_blur_region.cpp)
     target_link_libraries(kos-legacy-glass-blur-test PRIVATE Qt6::Core Qt6::Gui)
@@ -836,6 +857,49 @@ endif()
 # The shell imports this QML module even without compositor effects.
 if(KOS_BUILD_PLATFORM OR KOS_BUILD_KWIN_PLUGINS)
     add_subdirectory(shell/native/surface-shape)
+endif()
+
+# This compositor test needs an explicitly built Glass effect; the root build
+# intentionally does not compile that separately configured plugin project.
+set(KOS_GLASS_TEST_PLUGIN "" CACHE FILEPATH "Glass plugin for private foreground contrast test")
+if(BUILD_TESTING AND KOS_GLASS_TEST_PLUGIN AND TARGET kos_surface_shape)
+    find_program(KOS_GLASS_TEST_PYTHON NAMES python3 REQUIRED)
+    add_test(NAME kos-glass.foreground-contrast
+        COMMAND ${KOS_GLASS_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tests/glass-contrast/run.py
+            --plugin ${KOS_GLASS_TEST_PLUGIN} --qml ${CMAKE_BINARY_DIR}/qml)
+    set_tests_properties(kos-glass.foreground-contrast PROPERTIES LABELS "ui;compositor" TIMEOUT 30)
+    foreach(mode pixel dynamic probe scalar legacy)
+        add_test(NAME kos-glass.foreground-contrast-${mode}
+            COMMAND ${KOS_GLASS_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tests/glass-contrast/run.py
+                --plugin ${KOS_GLASS_TEST_PLUGIN} --qml ${CMAKE_BINARY_DIR}/qml --${mode})
+        set_tests_properties(kos-glass.foreground-contrast-${mode} PROPERTIES LABELS "ui;compositor" TIMEOUT 30)
+    endforeach()
+    add_test(NAME kos-glass.foreground-contrast-probe-v10
+        COMMAND ${KOS_GLASS_TEST_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/tests/glass-contrast/run.py
+            --plugin ${KOS_GLASS_TEST_PLUGIN} --qml ${CMAKE_BINARY_DIR}/qml --probe --max-version 10)
+    set_tests_properties(kos-glass.foreground-contrast-probe-v10 PROPERTIES LABELS "ui;compositor" TIMEOUT 30)
+endif()
+
+# Synthetic maps exercise real glyph composition without a Glass plugin.
+if(BUILD_TESTING AND TARGET kos_surface_shape AND KOS_QUICKSHELL_EXECUTABLE AND KOS_PYTHON_EXECUTABLE)
+    find_program(KOS_GLASS_TEST_KWIN NAMES kwin_wayland)
+    if(KOS_GLASS_TEST_KWIN)
+        foreach(scale 1 1.5 2)
+            foreach(layout fixed natural)
+                set(layout_args)
+                if(layout STREQUAL "natural")
+                    list(APPEND layout_args --natural-width)
+                endif()
+                add_test(NAME kos-glass.text-quality-${scale}-${layout}
+                    COMMAND ${KOS_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/glass-contrast/run.py
+                        --text-quality --check-text --scale ${scale} ${layout_args}
+                        --fontconfig ${CMAKE_CURRENT_SOURCE_DIR}/tests/glass-contrast/grayscale-fonts.conf
+                        --qml ${CMAKE_BINARY_DIR}/qml)
+                set_tests_properties(kos-glass.text-quality-${scale}-${layout} PROPERTIES
+                    LABELS "ui;headless" TIMEOUT 45 RUN_SERIAL TRUE)
+            endforeach()
+        endforeach()
+    endif()
 endif()
 
 if(KOS_BUILD_KWIN_PLUGINS)

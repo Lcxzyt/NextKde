@@ -11,6 +11,15 @@ ShellRoot {
     property var folderHighlights: []
     AppLauncherWindow { id: launcher; outputAvailable: true }
     ControlCenterPanel { id: center }
+    QtObject {
+        id: folderContrast
+        property bool adaptiveInkReady: true
+        property bool backdropInkMapReady: false
+        property color foregroundColor: "#0f0f12"
+        function contrastInk(alpha) {
+            return Qt.rgba(foregroundColor.r, foregroundColor.g, foregroundColor.b, alpha)
+        }
+    }
     function check(value, message) {
         if (!value) throw new Error(message)
     }
@@ -22,6 +31,31 @@ ShellRoot {
         for (let i = 0; i < children.length; ++i)
             result = result.concat(namedItems(children[i], name))
         return result
+    }
+    function checkFolderHeaderContrast() {
+        const header = namedItems(launcher.contentItem, "launcher-folder-header")[0]
+        const title = namedItems(launcher.contentItem, "launcher-folder-title")[0]
+        const back = namedItems(launcher.contentItem, "launcher-folder-back")[0]
+        const done = namedItems(launcher.contentItem, "launcher-folder-done")[0]
+        const input = namedItems(launcher.contentItem, "launcher-folder-name-input")[0]
+        check(header && title && back && done && input, "folder header controls exist")
+        const original = header.glassContrastSource
+        try {
+            header.glassContrastSource = folderContrast
+            for (const ink of ["#0f0f12", "#ffffff"]) {
+                folderContrast.foregroundColor = ink
+                for (const label of [title, back, done, input])
+                    check(label.color.toString() === ink, "folder header follows changing backdrop ink")
+                check(input.selectedTextColor.toString() === ink, "rename selection keeps adaptive ink")
+            }
+            check(title.style === Text.Normal && done.style === Text.Normal,
+                "adaptive folder text has no fixed outline")
+            folderContrast.adaptiveInkReady = false
+            check(title.contrastPanel !== folderContrast, "unavailable feedback releases stale ink")
+        } finally {
+            header.glassContrastSource = original
+            folderContrast.adaptiveInkReady = true
+        }
     }
     Timer {
         interval: 200
@@ -63,6 +97,7 @@ ShellRoot {
                     launcher.openFolder = launcher.displayedFolder
                     launcher.folderDialogOpen = true
                 } else if (phase === 2) {
+                    checkFolderHeaderContrast()
                     folderHighlights = namedItems(launcher.contentItem, "launcher-folder-selection-highlight")
                     check(folderHighlights.length === 2, "folder apps use the shared selection plate")
                     launcher.folderEditMode = true
