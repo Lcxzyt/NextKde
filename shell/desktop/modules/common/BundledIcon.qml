@@ -24,12 +24,23 @@ Item {
     property bool outlined: false
     property color outlineColor: Qt.rgba(0, 0, 0, 0.5)
 
+    readonly property var contrastPanel: IconAppearanceService.glassContrastPanel(root.parent)
+    readonly property bool contrastGuard: colorized && contrastPanel !== null
+        && Math.max(color.r, color.g, color.b) - Math.min(color.r, color.g, color.b) < 0.15
+    readonly property bool softShadow: contrastGuard && !perPixelInk
+        && color.r * 0.299 + color.g * 0.587 + color.b * 0.114 > 0.5
+    // Neutral masks over a panel with a backdrop map are inked per pixel.
+    property bool adaptiveInk: true
+    readonly property bool perPixelInk: adaptiveInk && colorized && !outlined
+        && IconAppearanceService.perPixelInk(contrastPanel, color)
+
     implicitWidth: root.size
     implicitHeight: root.size
 
     readonly property string source: BundledIcons.source(root.name)
 
     Image {
+        id: glyph
         anchors.fill: parent
         source: root.source
         sourceSize.width: Math.max(8, Math.round(root.size * 2))
@@ -37,13 +48,21 @@ Item {
         fillMode: Image.PreserveAspectFit
         smooth: true
         asynchronous: false
-        layer.enabled: root.colorized || root.outlined
-        layer.effect: MultiEffect {
+        layer.enabled: root.colorized || root.outlined || root.contrastGuard
+        layer.effect: root.perPixelInk ? adaptiveEffect : colorEffect
+    }
+    Component {
+        id: colorEffect
+        MultiEffect {
             colorization: root.colorized ? 1.0 : 0.0
             colorizationColor: root.color
-            shadowEnabled: root.outlined
-            shadowColor: root.outlineColor
-            shadowBlur: 0.22
+            shadowEnabled: root.contrastGuard ? root.softShadow : root.outlined
+            shadowColor: root.contrastGuard ? Qt.rgba(0, 0, 0, 0.16) : root.outlineColor
+            shadowBlur: root.contrastGuard ? 0.55 : 0.22
         }
+    }
+    Component {
+        id: adaptiveEffect
+        AdaptiveInkEffect { target: glyph; panel: root.contrastPanel; inkColor: root.color }
     }
 }

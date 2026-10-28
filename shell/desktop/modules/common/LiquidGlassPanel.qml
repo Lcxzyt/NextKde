@@ -31,6 +31,119 @@ Item {
 
     // Stable v8 controls. -1 inherits the global/legacy override strength.
     // Sigma is logical pixels; tint never fades the filtered backdrop.
+    property bool adaptiveInkEnabled: false
+    readonly property real backdropLuminance: surfaceRegion.backdropLuminance
+    // Per-pixel ink: the compositor's brightness map covers `backdropMapItem`
+    // (the published shape). Empty until the first v10 map arrives, in which
+    // case content keeps the whole-panel ink below.
+    readonly property string backdropMapSource: adaptiveInkReady ? surfaceRegion.backdropMapSource : ""
+    readonly property Item backdropMapItem: blurAnchor
+    readonly property bool backdropMapReady: backdropMapSource.length > 0
+        && backdropMapImage.status === Image.Ready
+    readonly property alias backdropMapTexture: backdropMapImage
+    readonly property bool backdropInkUniform: surfaceRegion.backdropInkUniform
+    readonly property bool backdropInkDark: surfaceRegion.backdropInkDark
+    readonly property bool backdropInkMapReady: adaptiveInkReady
+        && backdropInkImage.source.toString().length > 0 && backdropInkImage.status === Image.Ready
+    readonly property alias backdropInkMapTexture: backdropInkImage
+    // Diagnostics: map brightness at a normalized point of the shape, or -1.
+    function backdropAt(x, y) {
+        const shape = surfaceRegion.surfaceShape
+        return backdropMapReady && ("backdropAt" in shape) ? shape.backdropAt(x, y) : -1
+    }
+    // A texture provider for AdaptiveInkEffect; never drawn itself. The
+    // provider answers synchronously, and the old frame is retained while a
+    // new URL loads, so content never sees an empty map mid-update.
+    Image {
+        id: backdropMapImage
+        visible: false
+        width: 1; height: 1
+        source: root.backdropMapSource
+        cache: false
+        asynchronous: false
+        retainWhileLoading: true
+        smooth: true
+    }
+    Image {
+        id: backdropInkImage
+        visible: false
+        width: 1; height: 1
+        source: root.adaptiveInkReady ? surfaceRegion.backdropInkMapSource : ""
+        cache: false
+        asynchronous: false
+        retainWhileLoading: true
+        smooth: true
+    }
+    readonly property bool adaptiveInkReady: adaptiveInkEnabled && !tonal && backdropLuminance >= 0
+    property bool darkForeground: false
+    property bool _contrastInitialized: false
+    property bool _pendingDarkForeground: false
+    property int _contrastSide: -1
+    property var _contrastSideChanges: []
+    property real _contrastUnstableUntil: 0
+    property real inkMix: darkForeground ? 1 : 0
+    readonly property bool inkTransitionActive: inkMix > 0.001 && inkMix < 0.999
+    readonly property var glassContrastSource: root
+    Behavior on inkMix {
+        enabled: root.adaptiveInkReady
+        NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
+    }
+    function updateContrastInk() {
+        if (!adaptiveInkReady) {
+            contrastConfirm.stop()
+            _contrastInitialized = false
+            _contrastSideChanges = []
+            _contrastSide = -1
+            _contrastUnstableUntil = 0
+            return
+        }
+        if (!_contrastInitialized) {
+            darkForeground = backdropLuminance >= 0.5
+            _contrastSide = darkForeground ? 1 : 0
+            _contrastInitialized = true
+            return
+        }
+        const now = Date.now()
+        const side = backdropLuminance > 0.55 ? 1 : backdropLuminance < 0.45 ? 0 : -1
+        if (side >= 0 && side !== _contrastSide) {
+            _contrastSideChanges = _contrastSideChanges.filter(function(time) { return now - time < 600 }).concat([now])
+            _contrastSide = side
+            // Rapid scene alternation should not turn the foreground into a
+            // second flashing layer. Resume after a short stable interval.
+            if (_contrastSideChanges.length >= 3) _contrastUnstableUntil = now + 450
+        }
+        const next = side >= 0 ? side === 1 : darkForeground
+        if (next === darkForeground) {
+            contrastConfirm.stop()
+        } else if (!contrastConfirm.running || _pendingDarkForeground !== next) {
+            _pendingDarkForeground = next
+            contrastConfirm.interval = Math.max(110, _contrastUnstableUntil - now)
+            contrastConfirm.restart()
+        }
+    }
+    property Timer contrastConfirm: Timer {
+        interval: 110
+        onTriggered: {
+            if (!root.adaptiveInkReady) return
+            const remaining = root._contrastUnstableUntil - Date.now()
+            if (remaining > 0) {
+                interval = remaining
+                restart()
+            } else {
+                root.darkForeground = root._pendingDarkForeground
+            }
+        }
+    }
+    onBackdropLuminanceChanged: updateContrastInk()
+    onAdaptiveInkReadyChanged: updateContrastInk()
+    function contrastInk(alpha) {
+        // Uniform masks need no shader or ink tween: render hinted text
+        // directly into the window with the stable, opaque endpoint colour.
+        if (backdropInkMapReady && backdropInkUniform)
+            return backdropInkDark ? Qt.rgba(0.06, 0.06, 0.07, alpha) : Qt.rgba(1, 1, 1, alpha)
+        const mix = Math.max(0, Math.min(1, inkMix))
+        return Qt.rgba(1 - 0.94 * mix, 1 - 0.94 * mix, 1 - 0.93 * mix, alpha)
+    }
     property real blurSigma: -1
     property int effectType: SurfaceShape.Liquid
     property color tintColor: "black"
@@ -223,11 +336,12 @@ Item {
     // forwarded because content sits above the glass and has to read against
     // it. Without these a host would have to spell `glass.foregroundColor`,
     // which is noise at every call site.
-    readonly property color foregroundColor: bodySurface.foregroundColor
+    readonly property color foregroundColor: adaptiveInkReady
+        ? contrastInk(1) : bodySurface.foregroundColor
     readonly property color secondaryForegroundColor:
-        bodySurface.secondaryForegroundColor
+        adaptiveInkReady ? contrastInk(0.82) : bodySurface.secondaryForegroundColor
     readonly property color tertiaryForegroundColor:
-        bodySurface.tertiaryForegroundColor
+        adaptiveInkReady ? contrastInk(0.66) : bodySurface.tertiaryForegroundColor
 
     // The radius a full-bleed child should carry, so that it is rounded
     // exactly when the panel is. With the mask off that is the panel's own
@@ -246,6 +360,7 @@ Item {
         shapeItem: root.blurAnchor
         radius: root.captureAnchor && fixedCaptureSupported && !root.tonal ? 0 : root.radius * root.backdropScale
         shapeRadius: root.backdropRadius * (continuousBlurSupported ? 1 : root.backdropScale)
+        contrastFeedback: root.adaptiveInkEnabled && !root.tonal
         blurSigma: root.effectiveBlurSigma
         effectType: root.tonal || root.frostOnly ? SurfaceShape.Frosted : root.effectType
         materialProfile: root.material === "clear" ? SurfaceShape.Clear

@@ -6,6 +6,7 @@ import "../../../Kos/Ui"
 // One material recipe for controls, notifications and their glass buttons.
 // Hosts supply geometry, clipping and transition opacity, not a second tint.
 LiquidGlassPanel {
+    adaptiveInkEnabled: true
     cornerExponent: 2.0
     baseColor: ThemeService.backgroundColor
     material: "regular"

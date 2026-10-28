@@ -764,6 +764,10 @@ PopupWindow {
             Behavior on opacity { NumberAnimation { duration: 140 } }
         }
         Image {
+            id: quickGlyph1
+            readonly property color ink: AppearanceTokens.content.glassInk(undefined, parent)
+            readonly property var contrastPanel: IconAppearanceService.glassContrastPanel(parent)
+            readonly property bool perPixelInk: IconAppearanceService.perPixelInk(contrastPanel, ink)
             anchors.centerIn: parent
             width: 24
             height: 24
@@ -773,10 +777,9 @@ PopupWindow {
             fillMode: Image.PreserveAspectFit
             smooth: true
             layer.enabled: true
-            layer.effect: MultiEffect {
-                colorization: 1.0
-                colorizationColor: ThemeService.foregroundColor
-            }
+            layer.effect: perPixelInk ? quickGlyph1Adaptive : quickGlyph1Tint
+            Component { id: quickGlyph1Tint; MultiEffect { colorization: 1.0; colorizationColor: quickGlyph1.ink } }
+            Component { id: quickGlyph1Adaptive; AdaptiveInkEffect { target: quickGlyph1; panel: quickGlyph1.contrastPanel; inkColor: quickGlyph1.ink } }
         }
         MouseArea { id: screenshotPointer; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: ControlCenterService.captureInteractiveScreenshot() }
     }
@@ -857,6 +860,10 @@ PopupWindow {
             Behavior on opacity { NumberAnimation { duration: 140 } }
         }
         Image {
+            id: quickGlyph3
+            readonly property color ink: AppearanceTokens.content.glassInk(undefined, parent)
+            readonly property var contrastPanel: IconAppearanceService.glassContrastPanel(parent)
+            readonly property bool perPixelInk: IconAppearanceService.perPixelInk(contrastPanel, ink)
             anchors.centerIn: parent
             width: 24
             height: 24
@@ -866,10 +873,9 @@ PopupWindow {
             fillMode: Image.PreserveAspectFit
             smooth: true
             layer.enabled: true
-            layer.effect: MultiEffect {
-                colorization: 1.0
-                colorizationColor: ThemeService.foregroundColor
-            }
+            layer.effect: perPixelInk ? quickGlyph3Adaptive : quickGlyph3Tint
+            Component { id: quickGlyph3Tint; MultiEffect { colorization: 1.0; colorizationColor: quickGlyph3.ink } }
+            Component { id: quickGlyph3Adaptive; AdaptiveInkEffect { target: quickGlyph3; panel: quickGlyph3.contrastPanel; inkColor: quickGlyph3.ink } }
         }
         MouseArea {
             id: powerPointer
@@ -906,6 +912,11 @@ PopupWindow {
             Behavior on opacity { NumberAnimation { duration: 140 } }
         }
         Image {
+            id: quickGlyph4
+            readonly property color ink: ControlCenterService.doNotDisturbEnabled
+                ? "#0a84ff" : AppearanceTokens.content.glassInk(undefined, parent)
+            readonly property var contrastPanel: IconAppearanceService.glassContrastPanel(parent)
+            readonly property bool perPixelInk: !ControlCenterService.doNotDisturbEnabled && IconAppearanceService.perPixelInk(contrastPanel, ink)
             anchors.centerIn: parent
             width: 22
             height: 22
@@ -915,11 +926,9 @@ PopupWindow {
             fillMode: Image.PreserveAspectFit
             smooth: true
             layer.enabled: true
-            layer.effect: MultiEffect {
-                colorization: 1.0
-                colorizationColor: ControlCenterService.doNotDisturbEnabled
-                    ? "#0a84ff" : ThemeService.foregroundColor
-            }
+            layer.effect: perPixelInk ? quickGlyph4Adaptive : quickGlyph4Tint
+            Component { id: quickGlyph4Tint; MultiEffect { colorization: 1.0; colorizationColor: quickGlyph4.ink } }
+            Component { id: quickGlyph4Adaptive; AdaptiveInkEffect { target: quickGlyph4; panel: quickGlyph4.contrastPanel; inkColor: quickGlyph4.ink } }
         }
         MouseArea {
             id: dndPointer
@@ -955,6 +964,10 @@ PopupWindow {
             Behavior on opacity { NumberAnimation { duration: 140 } }
         }
         Image {
+            id: quickGlyph5
+            readonly property color ink: AppearanceTokens.content.glassInk(undefined, parent)
+            readonly property var contrastPanel: IconAppearanceService.glassContrastPanel(parent)
+            readonly property bool perPixelInk: IconAppearanceService.perPixelInk(contrastPanel, ink)
             anchors.centerIn: parent
             width: 22
             height: 22
@@ -964,10 +977,9 @@ PopupWindow {
             fillMode: Image.PreserveAspectFit
             smooth: true
             layer.enabled: true
-            layer.effect: MultiEffect {
-                colorization: 1.0
-                colorizationColor: ThemeService.foregroundColor
-            }
+            layer.effect: perPixelInk ? quickGlyph5Adaptive : quickGlyph5Tint
+            Component { id: quickGlyph5Tint; MultiEffect { colorization: 1.0; colorizationColor: quickGlyph5.ink } }
+            Component { id: quickGlyph5Adaptive; AdaptiveInkEffect { target: quickGlyph5; panel: quickGlyph5.contrastPanel; inkColor: quickGlyph5.ink } }
         }
         MouseArea {
             id: nightLightPointer

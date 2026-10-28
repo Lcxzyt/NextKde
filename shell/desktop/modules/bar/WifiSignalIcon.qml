@@ -19,6 +19,14 @@ Item {
     // whole mark once more with a wider stroke in outlineColor, underneath.
     property bool outlined: false
     property color outlineColor: Qt.rgba(0, 0, 0, 0.40)
+    readonly property var contrastPanel: IconAppearanceService.glassContrastPanel(root.parent)
+    readonly property bool effectiveOutlined: outlined && contrastPanel === null
+    // Off for a glyph on its own accent disc (the active Wi-Fi toggle).
+    property bool adaptiveInk: true
+    readonly property bool perPixelInk: adaptiveInk && !effectiveOutlined
+        && IconAppearanceService.perPixelInk(contrastPanel, glyphColor)
+    layer.enabled: perPixelInk
+    layer.effect: AdaptiveInkEffect { target: root; panel: root.contrastPanel; inkColor: root.glyphColor; inkAlpha: 1 }
     property real outlineWidth: 1.1
     readonly property int signalLevel: !wifiEnabled || !connected
         || signalStrength < 0 ? 0
@@ -94,7 +102,7 @@ Item {
             ctx.scale(width / 20, height / 20)
             ctx.translate(0, -1.1)
 
-            if (root.outlined) {
+            if (root.effectiveOutlined) {
                 drawOutline(ctx)
                 ctx.strokeStyle = root.glyphColor
                 ctx.fillStyle = root.glyphColor
@@ -127,6 +135,7 @@ Item {
             function onGlyphColorChanged() { canvas.requestPaint() }
             function onLineWidthChanged() { canvas.requestPaint() }
             function onOutlinedChanged() { canvas.requestPaint() }
+            function onEffectiveOutlinedChanged() { canvas.requestPaint() }
             function onOutlineColorChanged() { canvas.requestPaint() }
             function onOutlineWidthChanged() { canvas.requestPaint() }
             function onWidthChanged() { canvas.requestPaint() }

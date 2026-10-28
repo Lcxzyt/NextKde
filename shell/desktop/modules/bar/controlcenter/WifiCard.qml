@@ -44,7 +44,8 @@ ControlCenterCard {
                 && wifiCard.network.connectionType === "wifi"
             signalStrength: wifiCard.network.signalStrength
             glyphColor: wifiCard.network.wifiEnabled
-                ? ThemeService.tileActiveGlyph : ThemeService.tileGlyph
+                ? ThemeService.tileActiveGlyph : AppearanceTokens.content.glassInk(undefined, parent)
+            adaptiveInk: !wifiCard.network.wifiEnabled
         }
         // Toggling NetworkManager's radio is not instant either; mirror
         // the Bluetooth disc's busy arc so both read as "working", not
@@ -60,7 +61,9 @@ ControlCenterCard {
             Canvas {
                 id: wifiBusyArc
                 anchors.fill: parent
-                property color glyphColor: ThemeService.tileGlyph
+                property color glyphColor: AppearanceTokens.content.glassInk(undefined, parent)
+                layer.enabled: IconAppearanceService.perPixelInk(IconAppearanceService.glassContrastPanel(parent), glyphColor)
+                layer.effect: AdaptiveInkEffect { target: wifiBusyArc; inkColor: wifiBusyArc.glyphColor; inkAlpha: 1 }
                 onGlyphColorChanged: requestPaint()
                 onPaint: {
                     const ctx = getContext("2d")

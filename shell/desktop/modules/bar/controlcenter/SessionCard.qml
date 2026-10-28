@@ -46,7 +46,7 @@ ControlCenterCard {
                     anchors.centerIn: parent
                     anchors.horizontalCenterOffset: -1
                     text: "‹"
-                    color: AppearanceTokens.content.glassInk()
+                    color: AppearanceTokens.content.glassInk(undefined, parent)
                     font { pixelSize: 18; weight: Font.Bold }
                 }
 
@@ -73,7 +73,7 @@ ControlCenterCard {
                 GlassText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: sessionCard.service.currentUserName
-                    color: ThemeService.foregroundColor
+                    color: AppearanceTokens.content.glassInk(undefined, parent)
                     font { pixelSize: 12; weight: Font.Bold; family: "Noto Sans CJK SC" }
                 }
 
@@ -96,7 +96,7 @@ ControlCenterCard {
                         width: 16
                         height: 16
                         name: BundledIcons.roleName("switchUser")
-                        color: ThemeService.foregroundColor
+                        color: AppearanceTokens.content.glassInk(undefined, parent)
                     }
                 }
             }
@@ -183,14 +183,14 @@ ControlCenterCard {
                             height: 20
                             name: BundledIcons.roleName(modelData.icon)
                             color: modelData.danger
-                                ? "#ff3b30" : ThemeService.foregroundColor
+                                ? "#ff3b30" : AppearanceTokens.content.glassInk(undefined, parent)
                         }
 
                         GlassText {
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.label
                             color: modelData.danger
-                                ? "#ff3b30" : ThemeService.foregroundColor
+                                ? "#ff3b30" : AppearanceTokens.content.glassInk(undefined, parent)
                             font { pixelSize: 13; weight: Font.Medium; family: "Noto Sans CJK SC" }
                         }
                     }

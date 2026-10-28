@@ -36,8 +36,10 @@ ControlCenterCard {
             anchors.centerIn: parent
             width: 21; height: 21
             property bool active: bluetoothCard.service.bluetoothPowered
-            property color glyphColor: ThemeService.tileGlyph
+            property color glyphColor: AppearanceTokens.content.glassInk(undefined, parent)
             opacity: bluetoothCard.service.bluetoothChangeInProgress ? 0 : 1
+            layer.enabled: !active && IconAppearanceService.perPixelInk(IconAppearanceService.glassContrastPanel(parent), glyphColor)
+            layer.effect: AdaptiveInkEffect { target: controlBtGlyph; inkColor: controlBtGlyph.glyphColor; inkAlpha: 1 }
             Behavior on opacity { NumberAnimation { duration: 140 } }
             onActiveChanged: requestPaint()
             onGlyphColorChanged: requestPaint()
@@ -80,7 +82,9 @@ ControlCenterCard {
             Canvas {
                 id: bluetoothBusyArc
                 anchors.fill: parent
-                property color glyphColor: ThemeService.tileGlyph
+                property color glyphColor: AppearanceTokens.content.glassInk(undefined, parent)
+                layer.enabled: IconAppearanceService.perPixelInk(IconAppearanceService.glassContrastPanel(parent), glyphColor)
+                layer.effect: AdaptiveInkEffect { target: bluetoothBusyArc; inkColor: bluetoothBusyArc.glyphColor; inkAlpha: 1 }
                 onGlyphColorChanged: requestPaint()
                 onPaint: {
                     const ctx = getContext("2d")

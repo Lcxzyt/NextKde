@@ -61,7 +61,7 @@ ControlCenterCard {
                 anchors.centerIn: parent
                 anchors.horizontalCenterOffset: -1
                 text: "‹"
-                color: AppearanceTokens.content.glassInk()
+                color: AppearanceTokens.content.glassInk(undefined, parent)
                 font { pixelSize: 18; weight: Font.Bold }
             }
 
@@ -89,7 +89,7 @@ ControlCenterCard {
                 : (submenuCard.page === "bluetooth" ? I18n.tr("Bluetooth")
                 : (submenuCard.page === "brightness" ? I18n.tr("Display Brightness")
                 : (submenuCard.page === "sound" ? I18n.tr("Sound") : "")))
-            color: AppearanceTokens.content.glassInk()
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             font { pixelSize: 13; weight: Font.Bold; family: "Noto Sans CJK SC" }
         }
 

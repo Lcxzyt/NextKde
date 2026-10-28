@@ -28,14 +28,14 @@ Item {
         GlassText {
             anchors { left: parent.left; top: parent.top; topMargin: 2 }
             text: I18n.tr("Master Volume")
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             font { pixelSize: 11; weight: Font.DemiBold; family: "Noto Sans CJK SC" }
         }
 
         GlassText {
             anchors { right: parent.right; top: parent.top; topMargin: 2 }
             text: Math.round(soundSubmenuView.volumePreview) + "%"
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             opacity: 0.65
             font { pixelSize: 10; family: "Noto Sans CJK SC" }
         }
@@ -52,7 +52,7 @@ Item {
             // One resolved ink for the whole glyph: the muted body is
             // the same colour at a lower alpha, so it never has to be
             // recomputed from a light/dark pair here.
-            readonly property color ink: AppearanceTokens.content.glassInk()
+            readonly property color ink: AppearanceTokens.content.glassInk(undefined, parent)
 
             onVolumeLevelChanged: requestPaint()
             onIsMutedChanged: requestPaint()
@@ -168,7 +168,7 @@ Item {
 
         GlassText {
             text: I18n.tr("Output devices")
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             opacity: 0.60
             font.pixelSize: 10
         }
@@ -187,7 +187,7 @@ Item {
                 contentItem: Rectangle {
                     implicitWidth: 3
                     radius: 1.5
-                    color: ThemeService.foregroundColor
+                    color: AppearanceTokens.content.glassInk(undefined, parent)
                     opacity: 0.35
                 }
             }
@@ -202,7 +202,7 @@ Item {
                     verticalAlignment: Text.AlignVCenter
                     text: (modelData.isDefault ? "✓  " : "    ") + modelData.description
                     elide: Text.ElideRight
-                    color: ThemeService.foregroundColor
+                    color: AppearanceTokens.content.glassInk(undefined, parent)
                     font.pixelSize: 11
                 }
                 MouseArea {
@@ -223,7 +223,7 @@ Item {
                 : soundSubmenuView.service.audioOutputError || (soundSubmenuView.service.audioOutputs.length
                     ? "" : soundSubmenuView.service.audioOutputsRefreshInProgress
                         ? I18n.tr("Reading…") : I18n.tr("No available output devices"))
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             elide: Text.ElideRight
             font.pixelSize: 10
             MouseArea {
@@ -252,7 +252,7 @@ Item {
             id: soundApplicationsTitle
             anchors { left: parent.left; top: parent.top }
             text: I18n.tr("Application Volume")
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             opacity: 0.60
             font { pixelSize: 10; weight: Font.DemiBold; family: "Noto Sans CJK SC" }
         }
@@ -263,7 +263,7 @@ Item {
             anchors.verticalCenterOffset: 8
             text: soundSubmenuView.service.audioApplicationsRefreshInProgress
                 ? I18n.tr("Reading…") : I18n.tr("No active audio applications")
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             opacity: 0.45
             font { pixelSize: 10; family: "Noto Sans CJK SC" }
         }
@@ -311,7 +311,7 @@ Item {
                         GlassText {
                             anchors.centerIn: parent
                             text: appVolumeRow.muted ? "×" : "♪"
-                            color: appVolumeRow.muted ? "#ff453a" : ThemeService.foregroundColor
+                            color: appVolumeRow.muted ? "#ff453a" : AppearanceTokens.content.glassInk(undefined, parent)
                             font { pixelSize: appVolumeRow.muted ? 15 : 13; weight: Font.Bold }
                         }
 
@@ -339,7 +339,7 @@ Item {
                         }
                         text: appVolumeRow.modelData.name || I18n.tr("Audio application")
                         elide: Text.ElideRight
-                        color: ThemeService.foregroundColor
+                        color: AppearanceTokens.content.glassInk(undefined, parent)
                         font { pixelSize: 10; weight: Font.DemiBold; family: "Noto Sans CJK SC" }
                     }
 
@@ -347,7 +347,7 @@ Item {
                         id: appVolumePercent
                         anchors { right: parent.right; rightMargin: 5; verticalCenter: appVolumeName.verticalCenter }
                         text: Math.round(appVolumeRow.volumePreview) + "%"
-                        color: ThemeService.foregroundColor
+                        color: AppearanceTokens.content.glassInk(undefined, parent)
                         opacity: 0.55
                         font { pixelSize: 9; family: "Noto Sans CJK SC" }
                     }
@@ -364,7 +364,7 @@ Item {
                         height: 27
                         value: Math.min(1, appVolumeRow.volumePreview / 150)
                         accentColor: AppearanceTokens.content.glassInk(
-                            appVolumeRow.muted ? 0.25 : 0.42)
+                            appVolumeRow.muted ? 0.25 : 0.42, parent)
                         onPreviewChanged: function(v) {
                             appVolumeRow.volumePreview = Math.round(v * 150)
                         }
@@ -401,14 +401,14 @@ Item {
         GlassText {
             anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
             text: I18n.tr("Sound settings…")
-            color: soundSettingsMouse.containsMouse ? "#0a84ff" : ThemeService.foregroundColor
+            color: soundSettingsMouse.containsMouse ? "#0a84ff" : AppearanceTokens.content.glassInk(undefined, parent)
             font { pixelSize: 11; weight: Font.DemiBold; family: "Noto Sans CJK SC" }
         }
 
         GlassText {
             anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
             text: "›"
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             opacity: 0.45
             font { pixelSize: 13; weight: Font.Bold }
         }

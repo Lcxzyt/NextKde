@@ -61,4 +61,7 @@ qsb --qt6 -o stage_round.frag.qsb stage_round.frag
 echo "Compiling scene liquid fragment shader..."
 qsb --qt6 -o scene_liquid.frag.qsb scene_liquid.frag
 
-echo "Done: icon_effect.frag.qsb + squircle.frag.qsb + card_shadow.vert.qsb + card_shadow.frag.qsb + depth_parallax.frag.qsb + layered_wallpaper.frag.qsb + spatial_foreground.frag.qsb + stage_tilt.frag.qsb + stage_round.frag.qsb + scene_liquid.frag.qsb"
+echo "Compiling adaptive ink fragment shader..."
+qsb --qt6 -o adaptive_ink.frag.qsb adaptive_ink.frag
+
+echo "Done: icon_effect.frag.qsb + squircle.frag.qsb + card_shadow.vert.qsb + card_shadow.frag.qsb + depth_parallax.frag.qsb + layered_wallpaper.frag.qsb + spatial_foreground.frag.qsb + stage_tilt.frag.qsb + stage_round.frag.qsb + scene_liquid.frag.qsb + adaptive_ink.frag.qsb"

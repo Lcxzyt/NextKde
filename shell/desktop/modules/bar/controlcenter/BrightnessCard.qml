@@ -23,7 +23,7 @@ ControlCenterCard {
         spacing: 4
         GlassText {
             text: I18n.tr("Display Brightness")
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             font { pixelSize: 11; weight: Font.DemiBold; family: "Noto Sans CJK SC" }
         }
     }
@@ -31,14 +31,14 @@ ControlCenterCard {
         anchors { right: parent.right; top: parent.top; rightMargin: 30; topMargin: 8 }
         text: slotCard6.service.brightnessAvailable
             ? Math.round(slotCard6.brightnessPreview) + "%" : I18n.tr("No brightness device")
-        color: ThemeService.foregroundColor
-        opacity: 0.50
-        font { pixelSize: 9; family: "Noto Sans CJK SC" }
+        color: AppearanceTokens.content.glassInk(undefined, parent)
+        opacity: 0.72
+        font { pixelSize: 10; family: "Noto Sans CJK SC" }
     }
     GlassText {
         anchors { right: parent.right; top: parent.top; rightMargin: 13; topMargin: 5 }
         text: "›"
-        color: ThemeService.foregroundColor
+        color: AppearanceTokens.content.glassInk(undefined, parent)
         font { pixelSize: 15; weight: Font.Bold }
     }
     MouseArea {
@@ -71,7 +71,7 @@ ControlCenterCard {
     GlassText {
         anchors { left: parent.left; leftMargin: 12; bottom: parent.bottom; bottomMargin: 12 }
         text: "☀"
-        color: ThemeService.foregroundColor
+        color: AppearanceTokens.content.glassInk(undefined, parent)
         opacity: 0.65
         font.pixelSize: 13
     }

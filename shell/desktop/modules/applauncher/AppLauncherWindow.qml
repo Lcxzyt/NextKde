@@ -73,7 +73,8 @@ PanelWindow {
     readonly property int fullscreenPageOffset: isFullscreenMode
         ? fullscreenPage * fullscreenPageSize : 0
     readonly property real gridIconSize: configIconSize
-    readonly property color launcherForegroundColor: AppearanceTokens.surface.pick(AppearanceTokens.colors.surfaceForeground, (isFullscreenMode
+    readonly property color launcherForegroundColor: launcherSurface.adaptiveInkReady
+        ? launcherSurface.foregroundColor : AppearanceTokens.surface.pick(AppearanceTokens.colors.surfaceForeground, (isFullscreenMode
             ? Qt.rgba(1, 1, 1, 0.94) : AppLauncherService.dockForegroundColor))
     onFilteredApplicationsChanged: {
         root.cancelFullscreenPageTransition();
@@ -1083,7 +1084,7 @@ PanelWindow {
         capsuleReveal: true
         property var application: null
         baseColor: ThemeService.backgroundColor
-        foregroundColor: ThemeService.foregroundColor
+        foregroundColor: AppearanceTokens.content.glassInk(undefined, background)
         onAction: function (name) {
             const app = application;
             if (!app)
@@ -1246,6 +1247,7 @@ PanelWindow {
 
             Item {
                 id: background
+                readonly property var glassContrastSource: launcherSurface
                 objectName: "launcher-stable-layout"
                 width: launcherRevealClip.width
                 height: launcherRevealClip.height
@@ -1257,6 +1259,7 @@ PanelWindow {
                 // KWin alone renders the blur, refraction and highlights.
                 LiquidGlassPanel {
                     id: launcherSurface
+                    adaptiveInkEnabled: true
                     objectName: "launcher-glass-surface"
                     blurAnchor: background
                     width: background.width
@@ -2211,9 +2214,9 @@ PanelWindow {
                                         + dotActiveShare * (fullscreenPageDots.activeDotSize - fullscreenPageDots.dotSize)
                                     height: width
                                     radius: width / 2
-                                    color: Qt.rgba(ThemeService.foregroundColor.r,
-                                        ThemeService.foregroundColor.g,
-                                        ThemeService.foregroundColor.b,
+                                    color: Qt.rgba(launcherSurface.foregroundColor.r,
+                                        launcherSurface.foregroundColor.g,
+                                        launcherSurface.foregroundColor.b,
                                         0.38 + 0.50 * dotActiveShare)
                                     MouseArea {
                                         anchors.fill: parent
@@ -2293,6 +2296,10 @@ PanelWindow {
 
                             Item {
                                 id: folderHeader
+                                objectName: "launcher-folder-header"
+                                // Share the launcher's map; each label uses the
+                                // cells behind its own glyphs, not the Dock ink.
+                                property var glassContrastSource: launcherSurface
                                 anchors {
                                     top: parent.top
                                     left: parent.left
@@ -2302,12 +2309,12 @@ PanelWindow {
                                 height: 28
 
                                 GlassText {
+                                    objectName: "launcher-folder-back"
                                     anchors {
                                         left: parent.left
                                         verticalCenter: parent.verticalCenter
                                     }
                                     text: "‹"
-                                    color: AppLauncherService.dockForegroundColor
                                     font {
                                         pixelSize: 28
                                         weight: Font.DemiBold
@@ -2320,14 +2327,12 @@ PanelWindow {
                                     }
                                 }
 
-                                ShellText {
+                                GlassText {
                                     id: folderTitle
+                                    objectName: "launcher-folder-title"
                                     anchors.centerIn: parent
                                     visible: !root.folderRenameActive
                                     text: root.displayedFolder ? root.displayedFolder.name : I18n.tr("Folder")
-                                    color: AppLauncherService.dockForegroundColor
-                                    style: Text.Outline
-                                    styleColor: Qt.rgba(0, 0, 0, 0.38)
                                     font {
                                         pixelSize: 16
                                         weight: Font.DemiBold
@@ -2343,15 +2348,16 @@ PanelWindow {
 
                                 TextInput {
                                     id: folderNameInput
+                                    objectName: "launcher-folder-name-input"
                                     renderType: folderDialog.scale === 1
                                         ? TextInput.NativeRendering : TextInput.QtRendering
                                     anchors.centerIn: parent
                                     visible: root.folderRenameActive
                                     width: Math.min(180, parent.width - 100)
                                     horizontalAlignment: Text.AlignHCenter
-                                    color: AppLauncherService.dockForegroundColor
-                                    selectionColor: Qt.rgba(1, 1, 1, 0.30)
-                                    selectedTextColor: AppLauncherService.dockForegroundColor
+                                    color: AppearanceTokens.content.glassInk(undefined, folderHeader)
+                                    selectionColor: Qt.rgba(color.r, color.g, color.b, 0.30)
+                                    selectedTextColor: color
                                     text: root.folderRenameText
                                     font {
                                         pixelSize: 16
@@ -2380,12 +2386,13 @@ PanelWindow {
                                         top: folderNameInput.bottom
                                         topMargin: 3
                                     }
-                                    color: Qt.rgba(ThemeService.foregroundColor.r,
-                                        ThemeService.foregroundColor.g,
-                                        ThemeService.foregroundColor.b, 0.68)
+                                    color: Qt.rgba(folderNameInput.color.r,
+                                        folderNameInput.color.g,
+                                        folderNameInput.color.b, 0.68)
                                 }
 
-                                ShellText {
+                                GlassText {
+                                    objectName: "launcher-folder-done"
                                     anchors {
                                         right: parent.right
                                         verticalCenter: parent.verticalCenter
@@ -2406,9 +2413,6 @@ PanelWindow {
                                         }
                                     }
                                     text: I18n.tr("Done")
-                                    color: AppLauncherService.dockForegroundColor
-                                    style: Text.Outline
-                                    styleColor: Qt.rgba(0, 0, 0, 0.38)
                                     font {
                                         pixelSize: 13
                                         weight: Font.Bold

@@ -27,6 +27,11 @@ ControlCenterCard {
         Behavior on color { ColorAnimation { duration: 140 } }
 
         Image {
+            id: stageGlyph
+            readonly property color ink: stageModeCard.stageMode.enabled
+                    ? ThemeService.tileActiveGlyph : AppearanceTokens.content.glassInk(undefined, parent)
+            readonly property var contrastPanel: IconAppearanceService.glassContrastPanel(parent)
+            readonly property bool perPixelInk: !stageModeCard.stageMode.enabled && IconAppearanceService.perPixelInk(contrastPanel, ink)
             anchors.centerIn: parent
             width: 18; height: 18
             source: BundledIcons.source("window")
@@ -34,11 +39,9 @@ ControlCenterCard {
             fillMode: Image.PreserveAspectFit
             smooth: true
             layer.enabled: true
-            layer.effect: MultiEffect {
-                colorization: 1.0
-                colorizationColor: stageModeCard.stageMode.enabled
-                    ? ThemeService.tileActiveGlyph : ThemeService.tileGlyph
-            }
+            layer.effect: perPixelInk ? stageGlyphAdaptive : stageGlyphTint
+            Component { id: stageGlyphTint; MultiEffect { colorization: 1.0; colorizationColor: stageGlyph.ink } }
+            Component { id: stageGlyphAdaptive; AdaptiveInkEffect { target: stageGlyph; panel: stageGlyph.contrastPanel; inkColor: stageGlyph.ink } }
         }
     }
     GlassText {
@@ -46,7 +49,7 @@ ControlCenterCard {
         anchors { left: stageDisc.right; leftMargin: 8; right: parent.right; rightMargin: 8; top: parent.top; topMargin: 8 }
         text: I18n.tr("Stage")
         elide: Text.ElideRight
-        color: ThemeService.foregroundColor
+        color: AppearanceTokens.content.glassInk(undefined, parent)
         font { pixelSize: 12; weight: Font.Medium; family: "Noto Sans CJK SC" }
     }
     GlassText {
@@ -54,7 +57,7 @@ ControlCenterCard {
         elide: Text.ElideRight
         text: stageModeCard.stageMode.enabled ? I18n.tr("On") : I18n.tr("Off")
         color: stageModeCard.stageMode.enabled
-            ? ThemeService.tileActiveGlyph : ThemeService.foregroundColor
+            ? ThemeService.tileActiveGlyph : AppearanceTokens.content.glassInk(undefined, parent)
         opacity: stageModeCard.stageMode.enabled ? 0.9 : 0.5
         font { pixelSize: 11; family: "Noto Sans CJK SC" }
     }

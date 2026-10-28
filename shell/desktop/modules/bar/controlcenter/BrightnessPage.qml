@@ -36,21 +36,21 @@ Item {
                     anchors { left: parent.left; right: displayBrightnessPercent.left; top: parent.top; rightMargin: 8 }
                     text: modelData.label || modelData.id || I18n.tr("Display")
                     elide: Text.ElideRight
-                    color: AppearanceTokens.content.glassInk()
+                    color: AppearanceTokens.content.glassInk(undefined, parent)
                     font { pixelSize: 11; weight: Font.DemiBold; family: "Noto Sans CJK SC" }
                 }
                 GlassText {
                     id: displayBrightnessPercent
                     anchors { right: parent.right; top: parent.top }
                     text: Math.round(displayBrightnessRow.preview) + "%"
-                    color: AppearanceTokens.content.glassInk()
+                    color: AppearanceTokens.content.glassInk(undefined, parent)
                     font { pixelSize: 10; family: "Noto Sans CJK SC" }
                 }
                 GlassText {
                     anchors { left: parent.left; top: parent.top; topMargin: 20 }
                     text: modelData.isInternal
                         ? I18n.tr("Built-in display") : I18n.tr("External display")
-                    color: AppearanceTokens.content.glassInk()
+                    color: AppearanceTokens.content.glassInk(undefined, parent)
                     font { pixelSize: 9; family: "Noto Sans CJK SC" }
                 }
                 ControlCenterSlider {
@@ -75,7 +75,7 @@ Item {
         anchors.centerIn: parent
         visible: brightnessSubmenuView.service.brightnessDisplays.length === 0
         text: I18n.tr("No brightness-adjustable displays found")
-        color: AppearanceTokens.content.glassInk()
+        color: AppearanceTokens.content.glassInk(undefined, parent)
         font { pixelSize: 11; family: "Noto Sans CJK SC" }
     }
 
@@ -90,13 +90,13 @@ Item {
         GlassText {
             anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
             text: I18n.tr("Display settings…")
-            color: AppearanceTokens.content.glassInk()
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             font { pixelSize: 11; weight: Font.DemiBold; family: "Noto Sans CJK SC" }
         }
         GlassText {
             anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
             text: "›"
-            color: AppearanceTokens.content.glassInk()
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             font { pixelSize: 13; weight: Font.Bold }
         }
         MouseArea {

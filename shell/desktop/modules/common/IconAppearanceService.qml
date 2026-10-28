@@ -66,8 +66,27 @@ QtObject {
     // light/dark state: `isDarkTheme` already folds in "the glass does not
     // follow the appearance, so it stays dark", which is the case a
     // system-theme test would get wrong.
-    function glassContentColor(alpha) {
+    function glassContrastPanel(target) {
+        let item = target
+        while (item) {
+            const panel = ("glassContrastSource" in item) ? item.glassContrastSource : null
+            if (panel && panel.adaptiveInkReady) return panel
+            item = item.parent
+        }
+        return null
+    }
+    // True when `color` is a neutral ink over a panel that has a per-pixel
+    // backdrop map, so the item should re-ink itself with AdaptiveInkEffect.
+    function perPixelInk(panel, color) {
+        return panel !== null && panel.backdropInkMapReady === true
+            && Math.max(color.r, color.g, color.b) - Math.min(color.r, color.g, color.b) < 0.15
+            && (!panel.backdropInkUniform
+                || Math.abs(color.r - (panel.backdropInkDark ? 0.06 : 1)) > 0.02)
+    }
+    function glassContentColor(alpha, target) {
         const opacity = alpha === undefined ? 1.0 : alpha
+        const panel = glassContrastPanel(target)
+        if (panel) return panel.contrastInk(opacity)
         const darkGlass = !AppearanceTokens.isMaterial
             && AppearanceTokens.isDarkTheme
         if (!darkGlass) {

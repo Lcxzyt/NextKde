@@ -185,7 +185,8 @@ PanelWindow {
             readonly property bool isLow: (card.notification
                 ? card.notification.urgency : card._lastUrgency) === NotificationUrgency.Low
             readonly property bool expanded: !card.groupCollapsed && card.groupCount > 1
-            readonly property color foregroundColor: AppearanceTokens.content.glassInk()
+            readonly property var glassContrastSource: panel
+            readonly property color foregroundColor: panel.foregroundColor
             readonly property string iconSource: card.displayIconSource
 
             // Hover state for pause-on-hover. A HoverHandler (not a MouseArea)
@@ -239,6 +240,7 @@ PanelWindow {
             // disagree with the silhouette.
             LiquidGlassPanel {
                 id: panel
+                adaptiveInkEnabled: true
                 anchors.fill: parent
                 radius: card.radius
                 cornerExponent: AppearanceTokens.shape.cornerExponent

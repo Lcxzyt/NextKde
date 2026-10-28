@@ -18,7 +18,7 @@ ControlCenterCard {
         GlassText {
             anchors.centerIn: parent
             text: "♫"
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             opacity: 0.86
             font.pixelSize: 21
         }
@@ -50,7 +50,7 @@ ControlCenterCard {
             width: parent.width
             text: mediaCard.player?.trackTitle || I18n.tr("Not playing")
             elide: Text.ElideRight
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             font { pixelSize: 12; weight: Font.Bold; family: "Noto Sans CJK SC" }
         }
         GlassText {
@@ -58,7 +58,7 @@ ControlCenterCard {
             text: mediaCard.media.loading ? mediaCard.media.playbackStatus
                 : mediaCard.player?.trackArtist || I18n.tr("Media controls")
             elide: Text.ElideRight
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             opacity: 0.70
             font { pixelSize: 10; family: "Noto Sans CJK SC" }
         }
@@ -96,7 +96,7 @@ ControlCenterCard {
         }
     }
     component TransportButton: MediaControlButton {
-        glassInk: ThemeService.foregroundColor
+        glassInk: AppearanceTokens.content.glassInk(undefined, parent)
         width: primary ? 40 : 32
         height: width
     }

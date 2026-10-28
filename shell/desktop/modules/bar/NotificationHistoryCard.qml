@@ -32,6 +32,7 @@ Item {
     readonly property real compactHeight: 112
     readonly property bool canExpand: showPreview && (detailsExpanded || bodyText.truncated || summaryText.truncated)
     readonly property color ink: glass.foregroundColor
+    readonly property var glassContrastSource: glass
     readonly property alias blurRegion: glass.blurRegion
     readonly property alias fixedCaptureSupported: glass.fixedCaptureSupported
     readonly property bool backdropVisible: visible && nativeOutline.height > 0 && nativeOutline.width > 0

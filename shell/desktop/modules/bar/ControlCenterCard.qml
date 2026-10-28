@@ -97,6 +97,7 @@ Item {
         || _morph.x !== 0 || _morph.y !== 0
 
     // Content's adaptive foreground ink, from this card's glass.
+    readonly property var glassContrastSource: cardGlass
     readonly property color materialForegroundColor: cardGlass.foregroundColor
     readonly property color materialSecondaryForegroundColor:
         cardGlass.secondaryForegroundColor

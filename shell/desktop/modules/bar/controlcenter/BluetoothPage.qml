@@ -20,13 +20,13 @@ Item {
             GlassText {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: I18n.tr("Bluetooth is off")
-                color: AppearanceTokens.content.glassInk()
+                color: AppearanceTokens.content.glassInk(undefined, parent)
                 font { pixelSize: 13; weight: Font.Bold; family: "Noto Sans CJK SC" }
             }
             GlassText {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: I18n.tr("Turn on the switch above to connect devices")
-                color: AppearanceTokens.content.glassInk()
+                color: AppearanceTokens.content.glassInk(undefined, parent)
                 font { pixelSize: 11; family: "Noto Sans CJK SC" }
             }
         }
@@ -50,7 +50,7 @@ Item {
             GlassText {
                 anchors { left: parent.left; verticalCenter: parent.verticalCenter }
                 text: I18n.tr("Devices")
-                color: AppearanceTokens.content.glassInk()
+                color: AppearanceTokens.content.glassInk(undefined, parent)
                 font { pixelSize: 10; weight: Font.DemiBold; family: "Noto Sans CJK SC" }
             }
 
@@ -58,7 +58,7 @@ Item {
                 anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                 visible: bluetoothSubmenuView.service.bluetoothDevicesRefreshInProgress
                 text: I18n.tr("Refreshing…")
-                color: AppearanceTokens.content.glassInk()
+                color: AppearanceTokens.content.glassInk(undefined, parent)
                 font { pixelSize: 9; family: "Noto Sans CJK SC" }
             }
         }
@@ -98,7 +98,7 @@ Item {
                     visible: !!modelData.connected
                     anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
                     text: "✓"
-                    color: AppearanceTokens.content.glassInk()
+                    color: AppearanceTokens.content.glassInk(undefined, parent)
                     font { pixelSize: 13; weight: Font.Bold }
                 }
 
@@ -110,7 +110,7 @@ Item {
                     }
                     width: 16
                     height: 16
-                    readonly property color ink: AppearanceTokens.content.glassInk()
+                    readonly property color ink: AppearanceTokens.content.glassInk(undefined, parent)
                     onInkChanged: requestPaint()
                     onPaint: {
                         const ctx = getContext("2d")
@@ -148,13 +148,13 @@ Item {
                         width: parent.width
                         text: modelData.name || I18n.tr("Unknown device")
                         elide: Text.ElideRight
-                        color: AppearanceTokens.content.glassInk()
+                        color: AppearanceTokens.content.glassInk(undefined, parent)
                         font { pixelSize: 11; weight: modelData.connected ? Font.DemiBold : Font.Normal; family: "Noto Sans CJK SC" }
                     }
 
                     GlassText {
                         text: modelData.connected ? I18n.tr("Connected") : I18n.tr("Not connected")
-                        color: AppearanceTokens.content.glassInk()
+                        color: AppearanceTokens.content.glassInk(undefined, parent)
                         font { pixelSize: 9; family: "Noto Sans CJK SC" }
                     }
                 }
@@ -170,7 +170,7 @@ Item {
                         id: btBatteryText
                         anchors.centerIn: parent
                         text: (modelData.battery || 0) + "%"
-                        color: AppearanceTokens.content.glassInk()
+                        color: AppearanceTokens.content.glassInk(undefined, parent)
                         font { pixelSize: 10; family: "Noto Sans CJK SC" }
                     }
                 }
@@ -194,7 +194,7 @@ Item {
                 anchors.centerIn: parent
                 visible: submenuBtList.count === 0 && !bluetoothSubmenuView.service.bluetoothDevicesRefreshInProgress
                 text: I18n.tr("No paired devices found")
-                color: AppearanceTokens.content.glassInk()
+                color: AppearanceTokens.content.glassInk(undefined, parent)
                 font { pixelSize: 11; family: "Noto Sans CJK SC" }
             }
 
@@ -216,14 +216,14 @@ Item {
         GlassText {
             anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
             text: I18n.tr("Bluetooth settings…")
-            color: AppearanceTokens.content.glassInk()
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             font { pixelSize: 11; weight: Font.DemiBold; family: "Noto Sans CJK SC" }
         }
 
         GlassText {
             anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
             text: "›"
-            color: AppearanceTokens.content.glassInk()
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             font { pixelSize: 13; weight: Font.Bold }
         }
 

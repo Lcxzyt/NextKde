@@ -361,8 +361,8 @@ QtObject {
         // label is not the card's own picture. The material/glass branch is
         // shared with ink() rather than re-derived here, so a chrome glyph and
         // a card's own text can never disagree. `alpha` is optional.
-        function glassInk(alpha) {
-            return IconAppearanceService.glassContentColor(alpha)
+        function glassInk(alpha, target) {
+            return IconAppearanceService.glassContentColor(alpha, target)
         }
 
         // Ink over the backdrop, or the caller's own colour when the card is its

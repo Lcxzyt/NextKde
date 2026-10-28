@@ -23,21 +23,21 @@ ControlCenterCard {
         spacing: 4
         GlassText {
             text: I18n.tr("Sound")
-            color: ThemeService.foregroundColor
+            color: AppearanceTokens.content.glassInk(undefined, parent)
             font { pixelSize: 11; weight: Font.DemiBold; family: "Noto Sans CJK SC" }
         }
     }
     GlassText {
         anchors { right: parent.right; top: parent.top; rightMargin: 30; topMargin: 8 }
         text: Math.round(slotCard7.volumePreview) + "%"
-        color: ThemeService.foregroundColor
-        opacity: 0.50
-        font { pixelSize: 9; family: "Noto Sans CJK SC" }
+        color: AppearanceTokens.content.glassInk(undefined, parent)
+        opacity: 0.72
+        font { pixelSize: 10; family: "Noto Sans CJK SC" }
     }
     GlassText {
         anchors { right: parent.right; top: parent.top; rightMargin: 13; topMargin: 5 }
         text: "›"
-        color: ThemeService.foregroundColor
+        color: AppearanceTokens.content.glassInk(undefined, parent)
         font { pixelSize: 15; weight: Font.Bold }
     }
     MouseArea {
@@ -57,7 +57,9 @@ ControlCenterCard {
 
         readonly property int volumeLevel: Math.round(slotCard7.volumePreview)
         readonly property bool isMuted: slotCard7.service.audioMuted
-        readonly property color ink: AppearanceTokens.content.glassInk()
+        readonly property color ink: AppearanceTokens.content.glassInk(undefined, parent)
+        layer.enabled: IconAppearanceService.perPixelInk(IconAppearanceService.glassContrastPanel(parent), ink)
+        layer.effect: AdaptiveInkEffect { target: volumeGlyph; inkColor: volumeGlyph.ink; inkAlpha: 1 }
 
         onVolumeLevelChanged: requestPaint()
         onIsMutedChanged: requestPaint()

@@ -10,6 +10,18 @@ RoundedBlurRegion {
 
     // v8 is one committed declaration; the Region base is legacy transport only.
     readonly property bool continuousBlurSupported: surfaceShape.continuousBlurSupported
+    property bool contrastFeedback: false
+    readonly property real backdropLuminance: ("backdropLuminance" in surfaceShape)
+        ? surfaceShape.backdropLuminance : -1
+    // Protocol v10 per-cell map; "" on older bridges or compositors.
+    readonly property string backdropMapSource: ("backdropMapSource" in surfaceShape)
+        ? surfaceShape.backdropMapSource : ""
+    readonly property string backdropInkMapSource: ("backdropInkMapSource" in surfaceShape)
+        ? surfaceShape.backdropInkMapSource : ""
+    readonly property bool backdropInkUniform: ("backdropInkUniform" in surfaceShape)
+        && surfaceShape.backdropInkUniform
+    readonly property bool backdropInkDark: ("backdropInkDark" in surfaceShape)
+        && surfaceShape.backdropInkDark
     property bool protocolEnabled: true
     property real blurSigma: 12
     property int effectType: SurfaceShape.Liquid
@@ -96,6 +108,12 @@ RoundedBlurRegion {
     }
 
     // Guard the optional property so an installed older native bridge still loads.
+    property var contrastBinding: Binding {
+        target: ("contrastFeedback" in root.surfaceShape) ? root.surfaceShape : null
+        property: "contrastFeedback"
+        value: root.contrastFeedback
+    }
+
     property var opacityBinding: Binding {
         target: ("materialOpacity" in root.surfaceShape) ? root.surfaceShape : null
         property: "materialOpacity"

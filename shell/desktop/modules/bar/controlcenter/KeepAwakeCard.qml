@@ -27,6 +27,11 @@ ControlCenterCard {
         Behavior on color { ColorAnimation { duration: 140 } }
 
         Image {
+            id: keepAwakeGlyph
+            readonly property color ink: keepAwakeCard.service.keepAwakeEnabled
+                    ? ThemeService.tileActiveGlyph : AppearanceTokens.content.glassInk(undefined, parent)
+            readonly property var contrastPanel: IconAppearanceService.glassContrastPanel(parent)
+            readonly property bool perPixelInk: !keepAwakeCard.service.keepAwakeEnabled && IconAppearanceService.perPixelInk(contrastPanel, ink)
             anchors.centerIn: parent
             width: 18; height: 18
             source: BundledIcons.source("keep-awake")
@@ -34,18 +39,16 @@ ControlCenterCard {
             fillMode: Image.PreserveAspectFit
             smooth: true
             layer.enabled: true
-            layer.effect: MultiEffect {
-                colorization: 1.0
-                colorizationColor: keepAwakeCard.service.keepAwakeEnabled
-                    ? ThemeService.tileActiveGlyph : ThemeService.tileGlyph
-            }
+            layer.effect: perPixelInk ? keepAwakeGlyphAdaptive : keepAwakeGlyphTint
+            Component { id: keepAwakeGlyphTint; MultiEffect { colorization: 1.0; colorizationColor: keepAwakeGlyph.ink } }
+            Component { id: keepAwakeGlyphAdaptive; AdaptiveInkEffect { target: keepAwakeGlyph; panel: keepAwakeGlyph.contrastPanel; inkColor: keepAwakeGlyph.ink } }
         }
     }
     GlassText {
         anchors { left: keepAwakeDisc.right; leftMargin: 8; right: parent.right; rightMargin: 8; top: parent.top; topMargin: 8 }
         text: I18n.tr("Keep Awake")
         elide: Text.ElideRight
-        color: ThemeService.foregroundColor
+        color: AppearanceTokens.content.glassInk(undefined, parent)
         font { pixelSize: 12; weight: Font.Medium; family: "Noto Sans CJK SC" }
     }
     GlassText {
@@ -56,7 +59,7 @@ ControlCenterCard {
             : keepAwakeCard.service.keepAwakeError ? I18n.tr("Switch failed")
             : keepAwakeCard.service.keepAwakeEnabled ? I18n.tr("On") : I18n.tr("Off")
         color: keepAwakeCard.service.keepAwakeEnabled
-            ? ThemeService.tileActiveGlyph : ThemeService.foregroundColor
+            ? ThemeService.tileActiveGlyph : AppearanceTokens.content.glassInk(undefined, parent)
         opacity: keepAwakeCard.service.keepAwakeEnabled ? 0.9 : 0.5
         font { pixelSize: 11; family: "Noto Sans CJK SC" }
     }

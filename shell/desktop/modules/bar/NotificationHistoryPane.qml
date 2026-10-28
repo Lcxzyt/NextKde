@@ -26,7 +26,11 @@ Item {
     property bool folding: false
     property real revealProgress: expanded ? 1 : 0
     property real clockNow: Date.now()
-    readonly property color ink: AppearanceTokens.content.glassInk()
+    // The floating header samples its own strip; it must not borrow a card
+    // below a window edge or a scrolled-out delegate.
+    readonly property var glassContrastSource: headerProbe.adaptiveInkReady ? headerProbe : null
+    readonly property color ink: headerProbe.adaptiveInkReady
+        ? headerProbe.foregroundColor : AppearanceTokens.content.glassInk()
     readonly property int displayedMessageCount: expanded ? NotificationHistoryService.count : Math.min(3, NotificationHistoryService.count)
     readonly property real previewRowsHeight: {
         const children = historyList.contentItem.children
@@ -183,9 +187,16 @@ Item {
             .concat(footerButton.visible && footerButton.backdropVisible && footerButton.blurRegion ? [footerButton.blurRegion] : [])
             .concat(emptyGlass.visible && emptyGlass.blurRegion ? [emptyGlass.blurRegion] : [])
     }
+    BackdropInkProbe {
+        id: headerProbe
+        width: pane.width
+        height: 32
+        active: pane.active && pane.compositorGlass
+    }
     component DeckButton: AbstractButton {
         id: button
         property bool glassButton: false
+        readonly property var glassContrastSource: glassButton ? buttonGlass : pane.glassContrastSource
         property SceneBounds sceneBounds: SceneBounds { item: button }
         readonly property rect clipped: {
             const b = sceneBounds.rect
@@ -227,7 +238,8 @@ Item {
         }
         contentItem: GlassText {
             id: label
-            text: button.text; color: pane.ink
+            text: button.text
+            color: button.glassButton && buttonGlass.adaptiveInkReady ? buttonGlass.foregroundColor : pane.ink
             opacity: button.enabled ? 1 : 0.35
             font { pixelSize: 11; weight: Font.Medium }
             horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
