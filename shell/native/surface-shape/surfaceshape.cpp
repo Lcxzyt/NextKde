@@ -3,6 +3,10 @@
 #include "wayland-kos-surface-shape-v1-client-protocol.h"
 
 #include <QEvent>
+#include <QImage>
+#include <QMutex>
+#include <QMutexLocker>
+#include <QQuickImageProvider>
 #include <QHash>
 #include <QSet>
 #include <cmath>
@@ -14,9 +18,38 @@
 #include <QQuickWindow>
 #include <QtGui/qpa/qplatformwindow_p.h>
 #include <algorithm>
+#include <cstring>
 #include <wayland-client-core.h>
 
 Q_LOGGING_CATEGORY(surfaceShapeLog, "kos.surfaceShape", QtWarningMsg)
+
+// Backdrop maps are tiny greyscale images, one per shape. QML reaches them
+// through "image://kos-backdrop/<shape>/<serial>"; the serial makes every
+// update a new URL so Image never serves a cached frame. The provider may run
+// on the scene graph thread, hence the lock.
+namespace {
+struct BackdropMapStore {
+    QMutex mutex;
+    QHash<QString, QImage> images;
+    static BackdropMapStore &instance() { static BackdropMapStore store; return store; }
+};
+class BackdropMapProvider : public QQuickImageProvider
+{
+public:
+    BackdropMapProvider() : QQuickImageProvider(QQuickImageProvider::Image) {}
+    QImage requestImage(const QString &id, QSize *size, const QSize &) override
+    {
+        const QString key = id.section(QLatin1Char('/'), 0, 0);
+        auto &store = BackdropMapStore::instance();
+        QMutexLocker lock(&store.mutex);
+        const QImage image = store.images.value(key);
+        if (size) *size = image.size();
+        return image;
+    }
+};
+}
+
+QQuickImageProvider *createBackdropMapProvider() { return new BackdropMapProvider; }
 
 // Polish runs on the GUI thread after animations/layout and before the scene
 // graph is synchronized. A zero-timeout callback can run after that frame's
@@ -121,7 +154,7 @@ private:
             self->m_manager = static_cast<kos_surface_shape_manager_v1 *>(
                 wl_registry_bind(registry, name,
                     &kos_surface_shape_manager_v1_interface, std::min(version, uint32_t(std::clamp(qEnvironmentVariableIntValue("KOS_SURFACE_SHAPE_MAX_VERSION") > 0
-                        ? qEnvironmentVariableIntValue("KOS_SURFACE_SHAPE_MAX_VERSION") : 8, 1, 8)))));
+                        ? qEnvironmentVariableIntValue("KOS_SURFACE_SHAPE_MAX_VERSION") : 11, 1, 11)))));
             self->m_globalName = name;
             Q_EMIT self->available();
         }
@@ -182,6 +215,27 @@ bool SurfaceShape::continuousBlurSupported() const
 {
     return m_shape && wl_proxy_get_version(reinterpret_cast<wl_proxy *>(m_shape)) >= 8;
 }
+void SurfaceShape::setContrastFeedback(bool enabled) {
+    if (m_contrastFeedback == enabled) return;
+    m_contrastFeedback = enabled;
+    if (!enabled && m_backdropLuminance >= 0) {
+        m_backdropLuminance = -1;
+        Q_EMIT backdropLuminanceChanged();
+    }
+    if (!enabled) clearBackdropMap();
+    Q_EMIT finishChanged();
+    scheduleSync();
+}
+
+void SurfaceShape::setContrastOnly(bool enabled)
+{
+    if (m_contrastOnly == enabled) return;
+    m_contrastOnly = enabled;
+    releaseShape();
+    Q_EMIT finishChanged();
+    scheduleSync();
+}
+
 void SurfaceShape::setBlurSigma(qreal value) {
     value = std::isfinite(value) ? std::clamp(value, 0.0, 32.0) : 0.0;
     if (m_blurSigma == value) return;
@@ -212,6 +266,9 @@ void SurfaceShape::setTintOpacity(qreal value) {
 SurfaceShape::SurfaceShape(QObject *parent)
     : QObject(parent)
 {
+    m_inkClock.start();
+    m_inkTimer.setInterval(25);
+    connect(&m_inkTimer, &QTimer::timeout, this, [this] { updateBackdropInk(); });
     connect(&ShapeProtocol::instance(), &ShapeProtocol::available,
             this, &SurfaceShape::scheduleSync);
     connect(&ShapeProtocol::instance(), &ShapeProtocol::unavailable,
@@ -478,6 +535,11 @@ void SurfaceShape::sync()
         return;
     }
     if (!manager) return;
+    // An older compositor must not render a default material for a probe.
+    if (m_contrastOnly && wl_proxy_get_version(reinterpret_cast<wl_proxy *>(manager)) < 11) {
+        releaseShape();
+        return;
+    }
     if (surface != m_surface) {
         releaseShape();
         m_surface = surface;
@@ -490,11 +552,30 @@ void SurfaceShape::sync()
                 // A new request invalidates any completion still in flight.
                 if (serial == self->m_revealSerial && !self->m_revealDirty)
                     Q_EMIT self->revealFinished(opened != 0);
+            },
+            [](void *data, kos_surface_shape_v1 *, wl_fixed_t luminance) {
+                auto *self = static_cast<SurfaceShape *>(data);
+                if (!self->m_contrastFeedback) return;
+                self->m_backdropLuminance = std::clamp(wl_fixed_to_double(luminance), 0.0, 1.0);
+                Q_EMIT self->backdropLuminanceChanged();
+            },
+            [](void *data, kos_surface_shape_v1 *, uint32_t columns, uint32_t rows, wl_array *cells) {
+                auto *self = static_cast<SurfaceShape *>(data);
+                if (!self->m_contrastFeedback || !cells || columns == 0 || rows == 0
+                        || columns > 64 || rows > 48 || cells->size > 3072
+                        || cells->size != size_t(columns) * rows)
+                    return;
+                self->setBackdropMap(QSize(int(columns), int(rows)),
+                    QByteArray(static_cast<const char *>(cells->data), qsizetype(cells->size)));
             }
         };
         kos_surface_shape_v1_add_listener(m_shape, &listener, this);
         Q_EMIT activeChanged();
     }
+    if (wl_proxy_get_version(reinterpret_cast<wl_proxy *>(m_shape)) >= 9)
+        kos_surface_shape_v1_set_contrast_feedback(m_shape, m_contrastFeedback ? 1 : 0);
+    if (wl_proxy_get_version(reinterpret_cast<wl_proxy *>(m_shape)) >= 11)
+        kos_surface_shape_v1_set_contrast_only(m_shape, m_contrastOnly ? 1 : 0);
     const QRectF geometry = m_target->mapRectToScene(
         QRectF(0, 0, m_target->width(), m_target->height()));
     kos_surface_shape_v1_set_geometry(m_shape,
@@ -571,11 +652,93 @@ void SurfaceShape::releaseShape()
             if (m_window) m_window->update();
         }
     }
+    if (m_backdropLuminance >= 0) {
+        m_backdropLuminance = -1;
+        Q_EMIT backdropLuminanceChanged();
+    }
+    clearBackdropMap();
     const bool wasActive = m_shape != nullptr;
     m_shape = nullptr;
     m_surface = nullptr;
     m_revealDirty = true;
     if (wasActive) Q_EMIT activeChanged();
+}
+
+QString backdropMapKey(const SurfaceShape *shape)
+{
+    return QString::number(quintptr(shape), 16);
+}
+
+void SurfaceShape::setBackdropMap(const QSize &size, const QByteArray &cells)
+{
+    QImage image(size, QImage::Format_Grayscale8);
+    for (int row = 0; row < size.height(); ++row)
+        std::memcpy(image.scanLine(row), cells.constData() + qsizetype(row) * size.width(), size_t(size.width()));
+    const QString key = backdropMapKey(this);
+    {
+        auto &store = BackdropMapStore::instance();
+        QMutexLocker lock(&store.mutex);
+        store.images.insert(key, image);
+    }
+    m_backdropMapSize = size;
+    m_backdropMapCells = cells;
+    m_backdropMapSource = QStringLiteral("image://kos-backdrop/%1/%2").arg(key).arg(++m_backdropMapSerial);
+    updateBackdropInk(false);
+    Q_EMIT backdropMapChanged();
+}
+
+void SurfaceShape::updateBackdropInk(bool notify)
+{
+    const QByteArray mask = m_inkPolicy.update(m_backdropMapSize, m_backdropMapCells, m_inkClock.elapsed());
+    if (m_inkPolicy.pending()) m_inkTimer.start();
+    else m_inkTimer.stop();
+    if (mask.isEmpty() || (mask == m_backdropInkCells && m_backdropInkSize == m_backdropMapSize)) return;
+    m_backdropInkCells = mask;
+    m_backdropInkSize = m_backdropMapSize;
+    m_backdropInkDark = uchar(mask.front()) == 255;
+    m_backdropInkUniform = std::all_of(mask.cbegin(), mask.cend(),
+        [first = mask.front()](char cell) { return cell == first; });
+    QImage image(m_backdropMapSize, QImage::Format_Grayscale8);
+    for (int row = 0; row < image.height(); ++row)
+        std::memcpy(image.scanLine(row), mask.constData() + qsizetype(row) * image.width(), size_t(image.width()));
+    const QString key = backdropMapKey(this) + QStringLiteral("-ink");
+    {
+        auto &store = BackdropMapStore::instance();
+        QMutexLocker lock(&store.mutex);
+        store.images.insert(key, image);
+    }
+    m_backdropInkMapSource = QStringLiteral("image://kos-backdrop/%1/%2").arg(key).arg(++m_backdropMapSerial);
+    if (notify) Q_EMIT backdropMapChanged();
+}
+
+qreal SurfaceShape::backdropAt(qreal x, qreal y) const
+{
+    if (m_backdropMapSize.isEmpty() || !std::isfinite(x) || !std::isfinite(y)) return -1;
+    const int column = std::clamp(int(x * m_backdropMapSize.width()), 0, m_backdropMapSize.width() - 1);
+    const int row = std::clamp(int(y * m_backdropMapSize.height()), 0, m_backdropMapSize.height() - 1);
+    return uchar(m_backdropMapCells.at(qsizetype(row) * m_backdropMapSize.width() + column)) / 255.0;
+}
+
+void SurfaceShape::clearBackdropMap()
+{
+    m_inkTimer.stop();
+    m_inkPolicy.clear();
+    m_backdropInkCells.clear();
+    m_backdropInkSize = {};
+    m_backdropInkMapSource.clear();
+    m_backdropInkUniform = false;
+    m_backdropInkDark = false;
+    {
+        auto &store = BackdropMapStore::instance();
+        QMutexLocker lock(&store.mutex);
+        store.images.remove(backdropMapKey(this));
+        store.images.remove(backdropMapKey(this) + QStringLiteral("-ink"));
+    }
+    if (m_backdropMapSource.isEmpty()) return;
+    m_backdropMapSource.clear();
+    m_backdropMapSize = QSize();
+    m_backdropMapCells.clear();
+    Q_EMIT backdropMapChanged();
 }
 
 #include "surfaceshape.moc"

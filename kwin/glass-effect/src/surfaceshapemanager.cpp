@@ -5,6 +5,7 @@
 #include "wayland/surface.h"
 
 #include <algorithm>
+#include <cstring>
 #include <utility>
 #include <wayland-server-core.h>
 
@@ -17,6 +18,9 @@ struct SurfaceShapeManager::ShapeResource
     wl_resource *resource = nullptr;
     SurfaceShape value;
     SurfaceShape pending;
+    qreal lastLuminance = -1;
+    QByteArray lastMap;
+    QSize lastMapSize;
     bool retired = false;
     std::optional<SurfaceShape> sealed;
     struct RevealCommand { uint32_t enabled, opened, duration, serial; };
@@ -55,6 +59,8 @@ static const struct kos_surface_shape_v1_interface s_shapeImplementation{
     SurfaceShapeManager::setMaterial,
     SurfaceShapeManager::setBlurSigma,
     SurfaceShapeManager::setTint,
+    SurfaceShapeManager::setContrastFeedback,
+    SurfaceShapeManager::setContrastOnly,
 };
 
 SurfaceShapeManager::SurfaceShapeManager(Display *display, QObject *parent)
@@ -67,7 +73,7 @@ SurfaceShapeManager::SurfaceShapeManager(Display *display, QObject *parent)
     // the actual negotiated manager version below.
     if (display) {
         m_global = wl_global_create(*display, &kos_surface_shape_manager_v1_interface,
-                                    8, this, bindManager);
+                                    11, this, bindManager);
     }
 }
 
@@ -173,11 +179,75 @@ void SurfaceShapeManager::completeAnimations()
     }
 }
 
+void SurfaceShapeManager::sendBackdropLuminance(quint64 id, const QRectF &geometry, qreal luminance,
+                                               const QSize &mapSize, const QByteArray &map)
+{
+    for (const auto &list : std::as_const(m_shapes)) {
+        for (ShapeResource *shape : list) {
+            if (shape->value.id != id || !shape->resource || shape->retired
+                || !shape->value.enabled || !shape->value.contrastFeedback
+                || shape->value.geometry != geometry || wl_resource_get_version(shape->resource) < 9)
+                continue;
+            if (shape->lastLuminance < 0 || std::abs(luminance - shape->lastLuminance) >= 0.02) {
+                shape->lastLuminance = luminance;
+                kos_surface_shape_v1_send_backdrop_luminance(shape->resource, wl_fixed_from_double(luminance));
+            }
+            // The map changes locally even when the panel mean does not
+            // (a window edge sliding under one label), so it has its own
+            // threshold: any cell moving by more than ~2%.
+            if (wl_resource_get_version(shape->resource) >= 10 && !mapSize.isEmpty()
+                    && map.size() == qsizetype(mapSize.width()) * mapSize.height()
+                    && map.size() <= 3072) {
+                bool changed = shape->lastMapSize != mapSize || shape->lastMap.size() != map.size();
+                for (qsizetype i = 0; !changed && i < map.size(); ++i)
+                    changed = std::abs(int(uchar(map[i])) - int(uchar(shape->lastMap[i]))) > 5;
+                if (changed) {
+                    shape->lastMap = map;
+                    shape->lastMapSize = mapSize;
+                    wl_array cells;
+                    wl_array_init(&cells);
+                    if (void *data = wl_array_add(&cells, size_t(map.size()))) {
+                        std::memcpy(data, map.constData(), size_t(map.size()));
+                        kos_surface_shape_v1_send_backdrop_map(shape->resource,
+                            uint32_t(mapSize.width()), uint32_t(mapSize.height()), &cells);
+                    }
+                    wl_array_release(&cells);
+                }
+            }
+            return;
+        }
+    }
+}
+
+void SurfaceShapeManager::setContrastFeedback(wl_client *, wl_resource *resource, uint32_t enabled)
+{
+    auto *shape = static_cast<ShapeResource *>(wl_resource_get_user_data(resource));
+    if (!shape || !shape->manager || shape->retired) return;
+    if (shape->edit().contrastFeedback == (enabled != 0)) return;
+    shape->edit().contrastFeedback = enabled != 0;
+    shape->lastLuminance = -1;
+    shape->lastMap.clear();
+    shape->lastMapSize = QSize();
+    shape->manager->changed(shape);
+}
+
+void SurfaceShapeManager::setContrastOnly(wl_client *, wl_resource *resource, uint32_t enabled)
+{
+    auto *shape = static_cast<ShapeResource *>(wl_resource_get_user_data(resource));
+    if (!shape || !shape->manager || shape->retired) return;
+    if (shape->edit().contrastOnly == (enabled != 0)) return;
+    shape->edit().contrastOnly = enabled != 0;
+    shape->lastLuminance = -1;
+    shape->lastMap.clear();
+    shape->lastMapSize = QSize();
+    shape->manager->changed(shape);
+}
+
 void SurfaceShapeManager::bindManager(wl_client *client, void *data,
                                       uint32_t version, uint32_t id)
 {
     wl_resource *resource = wl_resource_create(client,
-        &kos_surface_shape_manager_v1_interface, std::min(version, 8u), id);
+        &kos_surface_shape_manager_v1_interface, std::min(version, 11u), id);
     if (!resource) {
         wl_client_post_no_memory(client);
         return;

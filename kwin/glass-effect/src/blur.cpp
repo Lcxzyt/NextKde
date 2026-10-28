@@ -7,6 +7,7 @@
 */
 
 #include "blur.h"
+#include "backdropcontrast.h"
 #include <array>
 #include <cmath>
 #include <QSet>
@@ -285,6 +286,19 @@ BlurEffect::BlurEffect()
     // singleton: waylandDisplay() has been part of the effect API since KWin 5.5,
     // while the singleton accessor was renamed between 6.6 (WaylandServer::self())
     // and 6.7 (the waylandServer() free function).
+    m_contrastSampler = std::make_unique<BackdropContrastSampler>();
+    m_contrastPollTimer.setInterval(16);
+    connect(&m_contrastPollTimer, &QTimer::timeout, this, [this] {
+        effects->makeOpenGLContextCurrent();
+        for (const auto &result : m_contrastSampler->poll()) {
+            if (result.id)
+                m_surfaceShapeManager->sendBackdropLuminance(result.id, result.geometry, result.luminance,
+                    result.mapSize, result.map);
+            else
+                effects->addRepaint(Rect(result.repaint));
+        }
+        if (!m_contrastSampler->pending()) m_contrastPollTimer.stop();
+    });
     m_surfaceShapeManager = std::make_unique<SurfaceShapeManager>(
         effects->waylandDisplay(), this);
     connect(m_surfaceShapeManager.get(), &SurfaceShapeManager::surfaceShapesChanged,
@@ -381,6 +395,11 @@ BlurEffect::BlurEffect()
 
 BlurEffect::~BlurEffect()
 {
+#ifndef GLASS_X11
+    m_contrastPollTimer.stop();
+    effects->makeOpenGLContextCurrent();
+    m_contrastSampler.reset();
+#endif
 #if !defined(GLASS_X11) && !defined(GLASS_KWIN_67)
     // When compositing is restarted, avoid removing the manager immediately.
     if (s_blurManager) {
@@ -2404,13 +2423,15 @@ void BlurEffect::blur(const RenderTarget &renderTarget, const RenderViewport &vi
             : combinedBlurSettings.noiseStrength;
         QVector<int> overrideLevels;
         for (const SurfaceShapeDraw &draw : surfaceShapeDraws) {
+            if (draw.shape.contrastOnly) continue;
             if (draw.blurLevel > 0 && !overrideLevels.contains(draw.blurLevel)) {
                 overrideLevels.append(draw.blurLevel);
             }
         }
         QSet<uint> gaussianKeys;
         for (const SurfaceShapeDraw &draw : surfaceShapeDraws)
-            if (draw.shape.blurSigma >= 0) gaussianKeys.insert(uint(qRound(draw.shape.blurSigma * 256)));
+            if (!draw.shape.contrastOnly && draw.shape.blurSigma >= 0)
+                gaussianKeys.insert(uint(qRound(draw.shape.blurSigma * 256)));
         std::vector<BlurRenderData::BlurOverrideScratch> reusable;
         for (auto it = renderInfo.gaussianScratch.begin(); it != renderInfo.gaussianScratch.end();) {
             if (!gaussianKeys.contains(it->first)) {
@@ -2479,6 +2500,7 @@ void BlurEffect::blur(const RenderTarget &renderTarget, const RenderViewport &vi
     const bool needsDefaultPass = surfaceShapeDraws.isEmpty()
         || std::any_of(surfaceShapeDraws.cbegin(), surfaceShapeDraws.cend(),
                        [&overridePasses, &filterKey](const SurfaceShapeDraw &draw) {
+            if (draw.shape.contrastOnly) return false;
             return std::none_of(overridePasses.cbegin(), overridePasses.cend(),
                                 [&draw, &filterKey](const BlurOverridePass &pass) {
                 return pass.level == filterKey(draw);
@@ -2493,7 +2515,26 @@ void BlurEffect::blur(const RenderTarget &renderTarget, const RenderViewport &vi
         drawBlurredRegion(contentBlurredTexture, 6, contentVertexCount,
                           contentOffset);
     } else {
+        auto sampleBackdrop = [&](const SurfaceShapeDraw &draw) {
+#ifndef GLASS_X11
+            if (!draw.shape.contrastFeedback || draw.shape.materialOpacity < 0.95) return;
+            const QRectF device = draw.nativeBox.translated(scaledBackgroundRect.topLeft());
+            const QRect scene = QRectF(device.x() / viewport.scale(), device.y() / viewport.scale(),
+                device.width() / viewport.scale(), device.height() / viewport.scale()).toAlignedRect()
+                .intersected(w->contentsRect().translated(w->pos()).toAlignedRect());
+            // Read only freshly drawn pixels within this client. The probe
+            // takes raw backdrop; material shapes sample after their finish.
+            if (!scene.isEmpty() && deviceRegion.contains(viewport.mapToDeviceCoordinatesAligned(Rect(scene))))
+                m_contrastSampler->enqueue(draw.shape.id, draw.shape.geometry, scene, renderTarget, viewport);
+            if (m_contrastSampler->pending() && !m_contrastPollTimer.isActive())
+                m_contrastPollTimer.start();
+#endif
+        };
         for (const SurfaceShapeDraw &draw : surfaceShapeDraws) {
+            if (draw.shape.contrastOnly) {
+                sampleBackdrop(draw);
+                continue;
+            }
             protocolShapeUniforms(draw);
             const BlurOverridePass *override = nullptr;
             if (filterKey(draw) != 0) {
@@ -2507,6 +2548,7 @@ void BlurEffect::blur(const RenderTarget &renderTarget, const RenderViewport &vi
             drawBlurredRegion(override ? override->texture : contentBlurredTexture,
                               draw.vertexOffset, draw.vertexCount,
                               override ? override->offset : contentOffset);
+            sampleBackdrop(draw);
         }
         m_roundedOnscreenPass.shader->setUniform(
             m_roundedOnscreenPass.boxLocation, shaderBox);
@@ -2547,6 +2589,7 @@ void BlurEffect::blur(const RenderTarget &renderTarget, const RenderViewport &vi
             drawNoiseRegion(contentNoiseStrength, 6, contentVertexCount);
         } else {
             for (const SurfaceShapeDraw &draw : surfaceShapeDraws) {
+                if (draw.shape.contrastOnly) continue;
                 drawNoiseRegion(contentNoiseStrength, draw.vertexOffset,
                                 draw.vertexCount, &draw);
             }

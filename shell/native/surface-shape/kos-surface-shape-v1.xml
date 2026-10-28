@@ -4,7 +4,7 @@
     SPDX-License-Identifier: MIT
   </copyright>
 
-  <interface name="kos_surface_shape_manager_v1" version="8">
+  <interface name="kos_surface_shape_manager_v1" version="11">
     <description summary="surface-local compositor shape metadata">
       Creates independent shape declarations for regions inside a wl_surface.
       Coordinates and radius use surface-local logical units.
@@ -44,7 +44,7 @@
     request (set_role is a no-op), and each new request is appended after
     destroy so the destructor opcode is unchanged.
   -->
-  <interface name="kos_surface_shape_v1" version="8">
+  <interface name="kos_surface_shape_v1" version="11">
     <request name="set_geometry">
       <arg name="x" type="int"/>
       <arg name="y" type="int"/>
@@ -186,6 +186,47 @@
       <arg name="green" type="fixed"/>
       <arg name="blue" type="fixed"/>
       <arg name="opacity" type="fixed"/>
+    </request>
+    <request name="set_contrast_feedback" since="9">
+      <description summary="request foreground contrast feedback for this glass shape">
+        Opt-in, default disabled. Feedback samples this shape after its glass
+        material and before its client content; no image pixels are exposed.
+        Updates are rate limited and geometry-tagged internally. Older clients
+        and compositors retain their theme foreground without this request.
+      </description>
+      <arg name="enabled" type="uint"/>
+    </request>
+    <event name="backdrop_luminance" since="9">
+      <description summary="normalized brightness behind the shape foreground">
+        Per-shape brightness from 0 (dark) to 1 (bright). Clients should use
+        hysteresis rather than flipping foreground on every small change.
+      </description>
+      <arg name="luminance" type="fixed"/>
+    </event>
+    <event name="backdrop_map" since="10">
+      <description summary="coarse brightness map behind the shape foreground">
+        Sent with contrast feedback enabled, after backdrop_luminance. A
+        columns x rows grid of brightness cells, one byte each (0 dark, 255
+        bright), row-major with the top row first, covering the shape's
+        geometry. Cells are about 8 logical pixels and temporally smoothed;
+        clients sample them bilinearly to choose foreground ink per pixel.
+        At most 3072 cells. A client bound below version 10 receives only
+        the scalar luminance.
+      </description>
+      <arg name="columns" type="uint"/>
+      <arg name="rows" type="uint"/>
+      <arg name="cells" type="array"/>
+    </event>
+    <request name="set_contrast_only" since="11">
+      <description summary="sample the backdrop without drawing a material">
+        Opt-in, default disabled. With contrast feedback enabled, this shape
+        samples its own geometry before client content but draws no blur,
+        tint, scrim, rim or noise. It is intended for floating foreground
+        labels such as notification headers. Geometry and enabled state are
+        committed with the other shape metadata. Clients must not publish a
+        contrast-only shape to compositors bound below version 11.
+      </description>
+      <arg name="enabled" type="uint"/>
     </request>
   </interface>
 </protocol>

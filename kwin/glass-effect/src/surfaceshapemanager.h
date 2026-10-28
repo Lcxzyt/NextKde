@@ -1,6 +1,8 @@
 #pragma once
 
+#include <QByteArray>
 #include <QHash>
+#include <QSize>
 #include <QSet>
 #include <QElapsedTimer>
 #include <optional>
@@ -22,6 +24,8 @@ struct SurfaceShape
 {
     quint64 id = 0;
     bool transactional = false;
+    bool contrastFeedback = false;
+    bool contrastOnly = false;
     uint effect = 0; // liquid=0, frosted=1
     uint material = 1; // clear=0, regular=1, thick=2
     qreal blurSigma = -1; // -1: legacy Kawase; v8: 0..32 logical px
@@ -83,6 +87,8 @@ public:
     bool ownsGeometry(const SurfaceInterface *surface) const;
     void advanceAnimations();
     void completeAnimations();
+    void sendBackdropLuminance(quint64 id, const QRectF &geometry, qreal luminance,
+                               const QSize &mapSize = {}, const QByteArray &map = {});
 
 Q_SIGNALS:
     void surfaceShapesChanged(KWin::SurfaceInterface *surface);
@@ -117,6 +123,8 @@ public: // Wayland C dispatch table callbacks.
                           uint32_t enabled, uint32_t opened, uint32_t duration, uint32_t serial);
     static void destroyShape(wl_client *client, wl_resource *resource);
     static void commit(wl_client *, wl_resource *, wl_resource *surface);
+    static void setContrastFeedback(wl_client *, wl_resource *, uint32_t enabled);
+    static void setContrastOnly(wl_client *, wl_resource *, uint32_t enabled);
     static void setMaterial(wl_client *, wl_resource *, uint32_t effect, uint32_t profile);
     static void setBlurSigma(wl_client *, wl_resource *, wl_fixed_t sigma);
     static void setTint(wl_client *, wl_resource *, uint32_t mode,

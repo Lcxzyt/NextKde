@@ -7,6 +7,11 @@
 #include <QPointer>
 #include <QQuickItem>
 #include <QRectF>
+#include <QSize>
+#include <QString>
+#include <QElapsedTimer>
+#include <QTimer>
+#include "backdropink.h"
 
 class QQuickWindow;
 struct kos_surface_shape_v1;
@@ -15,6 +20,16 @@ struct wl_surface;
 class SurfaceShape : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool contrastFeedback READ contrastFeedback WRITE setContrastFeedback NOTIFY finishChanged)
+    Q_PROPERTY(bool contrastOnly READ contrastOnly WRITE setContrastOnly NOTIFY finishChanged)
+    Q_PROPERTY(qreal backdropLuminance READ backdropLuminance NOTIFY backdropLuminanceChanged)
+    // Protocol v10: per-cell brightness behind the shape, as an image URL a
+    // ShaderEffect can sample ("" until the first map, or below v10).
+    Q_PROPERTY(QString backdropMapSource READ backdropMapSource NOTIFY backdropMapChanged)
+    Q_PROPERTY(QString backdropInkMapSource READ backdropInkMapSource NOTIFY backdropMapChanged)
+    Q_PROPERTY(bool backdropInkUniform READ backdropInkUniform NOTIFY backdropMapChanged)
+    Q_PROPERTY(bool backdropInkDark READ backdropInkDark NOTIFY backdropMapChanged)
+    Q_PROPERTY(QSize backdropMapSize READ backdropMapSize NOTIFY backdropMapChanged)
     Q_PROPERTY(bool continuousBlurSupported READ continuousBlurSupported NOTIFY activeChanged)
     Q_PROPERTY(qreal blurSigma READ blurSigma WRITE setBlurSigma NOTIFY finishChanged)
     Q_PROPERTY(int effectType READ effectType WRITE setEffectType NOTIFY finishChanged)
@@ -52,6 +67,18 @@ public:
     enum Material { Clear, Regular, Thick }; Q_ENUM(Material)
     enum TintMode { NoTint, Fixed, Graphite, Pearl }; Q_ENUM(TintMode)
     explicit SurfaceShape(QObject *parent = nullptr);
+    bool contrastFeedback() const { return m_contrastFeedback; }
+    void setContrastFeedback(bool enabled);
+    bool contrastOnly() const { return m_contrastOnly; }
+    void setContrastOnly(bool enabled);
+    qreal backdropLuminance() const { return m_backdropLuminance; }
+    QString backdropMapSource() const { return m_backdropMapSource; }
+    QString backdropInkMapSource() const { return m_backdropInkMapSource; }
+    bool backdropInkUniform() const { return m_backdropInkUniform; }
+    bool backdropInkDark() const { return m_backdropInkDark; }
+    QSize backdropMapSize() const { return m_backdropMapSize; }
+    // Brightness 0..1 of the map cell at normalized (x, y), or -1 without a map.
+    Q_INVOKABLE qreal backdropAt(qreal x, qreal y) const;
     bool continuousBlurSupported() const;
     qreal blurSigma() const { return m_blurSigma; }
     int effectType() const { return m_effectType; }
@@ -104,6 +131,8 @@ public:
 
 Q_SIGNALS:
     void finishChanged();
+    void backdropLuminanceChanged();
+    void backdropMapChanged();
     void targetChanged();
     void radiusChanged();
     void exponentChanged();
@@ -130,6 +159,9 @@ private:
     friend class SurfaceShapeSyncItem;
     bool eventFilter(QObject *watched, QEvent *event) override;
     void releaseShape();
+    void clearBackdropMap();
+    void setBackdropMap(const QSize &size, const QByteArray &cells);
+    void updateBackdropInk(bool notify = true);
     void disconnectAncestors();
     wl_surface *nativeSurface() const;
 
@@ -138,6 +170,21 @@ private:
     QPointer<QQuickItem> m_syncItem;
     kos_surface_shape_v1 *m_shape = nullptr;
     wl_surface *m_surface = nullptr;
+    bool m_contrastFeedback = false;
+    bool m_contrastOnly = false;
+    qreal m_backdropLuminance = -1;
+    QString m_backdropMapSource;
+    QSize m_backdropMapSize;
+    quint64 m_backdropMapSerial = 0;
+    QByteArray m_backdropMapCells;
+    QString m_backdropInkMapSource;
+    QByteArray m_backdropInkCells;
+    QSize m_backdropInkSize;
+    bool m_backdropInkUniform = false;
+    bool m_backdropInkDark = false;
+    BackdropInkPolicy m_inkPolicy;
+    QElapsedTimer m_inkClock;
+    QTimer m_inkTimer;
     qreal m_blurSigma = 12;
     int m_effectType = Liquid;
     int m_material = Regular;

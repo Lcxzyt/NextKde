@@ -4,7 +4,10 @@
 #include <QJSEngine>
 #include <QQmlEngine>
 #include <QQmlExtensionPlugin>
+#include <QQuickImageProvider>
 #include <qqml.h>
+
+QQuickImageProvider *createBackdropMapProvider();
 
 class SurfaceShapePlugin : public QQmlExtensionPlugin
 {
@@ -18,6 +21,12 @@ public:
             [](QQmlEngine *, QJSEngine *) -> QObject * {
                 return new CursorOverride;
             });
+    }
+    void initializeEngine(QQmlEngine *engine, const char *uri) override
+    {
+        QQmlExtensionPlugin::initializeEngine(engine, uri);
+        if (!engine->imageProvider(QStringLiteral("kos-backdrop")))
+            engine->addImageProvider(QStringLiteral("kos-backdrop"), createBackdropMapProvider());
     }
 };
 

@@ -66,6 +66,8 @@ set(glass_SOURCES
     blur.cpp
     settings.cpp
     surfaceshapemanager.cpp
+    backdropcontrast.cpp
+    ../../kos-bridge/windowbuttons/titlebarreadback.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/blur.qrc"
     main.cpp
 )
