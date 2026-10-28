@@ -52,6 +52,10 @@ fresh login after installation.
 
 ## Small-text pipeline diagnosis
 
+Install Noto Sans CJK SC in the verification environment (`noto-fonts-cjk` on
+Arch). The fixture fails without it, so Chinese coverage never silently becomes
+a comparison of missing-glyph boxes. Production font preferences are unchanged.
+
 In the VM, run this exploratory mode separately from the feedback assertions:
 
 ```sh

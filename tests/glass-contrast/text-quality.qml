@@ -31,6 +31,15 @@ ShellRoot {
             Math.round(point.y * dpr) / dpr - point.y)
     }
 
+    Component.onCompleted: {
+        // Missing CJK fonts would compare fallback boxes instead of Chinese
+        // strokes while still producing a passing pixel report.
+        if (Qt.fontFamilies().indexOf("Noto Sans CJK SC") < 0) {
+            console.error("GLASS_CONTRAST_FAIL text-quality requires Noto Sans CJK SC")
+            Qt.exit(1)
+        }
+    }
+
     QtObject {
         id: inkPanel
         readonly property bool adaptiveInkReady: true
